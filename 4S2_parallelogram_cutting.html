@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>平行四邊形分割活動</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+      background: linear-gradient(180deg, #f7fbff 0%, #eef6ff 100%);
+      color: #183b56;
+    }
+
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 28px 24px 88px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(26px, 3vw, 38px);
+      line-height: 1.35;
+    }
+
+    .instruction {
+      margin-bottom: 8px;
+      font-size: clamp(18px, 2.1vw, 24px);
+      font-weight: 700;
+      color: #0b6aa2;
+    }
+
+    .helper {
+      min-height: 26px;
+      margin-bottom: 16px;
+      font-size: 16px;
+      color: #466a85;
+    }
+
+    .stage {
+      background: #ffffff;
+      border: 2px solid #dcecff;
+      border-radius: 24px;
+      padding: 10px;
+      box-shadow: 0 18px 48px rgba(24, 59, 86, 0.12);
+    }
+
+    svg {
+      display: block;
+      width: 100%;
+      height: min(72vh, 680px);
+      border-radius: 18px;
+      touch-action: none;
+      background:
+        linear-gradient(0deg, rgba(230, 244, 255, 0.68), rgba(230, 244, 255, 0.68)),
+        radial-gradient(circle at top left, #ffffff 0%, #f9fcff 55%, #edf6ff 100%);
+    }
+
+    .original {
+      fill: #8cd3ff;
+      stroke: #25638f;
+      stroke-width: 3;
+    }
+
+    .pieceA {
+      fill: #ffcf7d;
+      stroke: #9a5a00;
+      stroke-width: 3;
+    }
+
+    .pieceB {
+      fill: #87e0c8;
+      stroke: #1d6c57;
+      stroke-width: 3;
+    }
+
+    .preview-line {
+      stroke: #ef476f;
+      stroke-width: 4;
+      stroke-linecap: round;
+      stroke-dasharray: 10 10;
+      pointer-events: none;
+    }
+
+    .cut-line {
+      stroke: #6b7280;
+      stroke-width: 4;
+      stroke-linecap: round;
+      stroke-dasharray: 8 8;
+      pointer-events: none;
+      opacity: 0.85;
+    }
+
+    .reset-btn {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      border: none;
+      border-radius: 999px;
+      padding: 14px 22px;
+      font-size: 18px;
+      font-weight: 700;
+      color: #ffffff;
+      background: #0b6aa2;
+      box-shadow: 0 12px 28px rgba(11, 106, 162, 0.28);
+      cursor: pointer;
+    }
+
+    .reset-btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .reset-btn:active {
+      transform: translateY(1px);
+    }
+
+    @media (max-width: 700px) {
+      .wrap {
+        padding: 20px 14px 82px;
+      }
+
+      svg {
+        height: 68vh;
+      }
+
+      .reset-btn {
+        right: 14px;
+        bottom: 14px;
+        font-size: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>題目：把一個平行四邊形沿直線剪開，不可能得出以下哪一組圖形？</h1>
+    <div class="instruction">INSTRUCTION：請用直線把平行四邊形剪開</div>
+    <div id="helper" class="helper" aria-live="polite">
+      請由平行四邊形外面按住並拖曳畫線；如果直線穿過圖形，就會剪成兩塊並稍稍分開。
+    </div>
+
+    <div class="stage">
+      <svg
+        id="scene"
+        viewBox="0 0 960 600"
+        role="img"
+        aria-label="可用直線分割的平行四邊形互動圖"
+      >
+        <g id="shapeLayer"></g>
+        <line
+          id="previewLine"
+          class="preview-line"
+          x1="0"
+          y1="0"
+          x2="0"
+          y2="0"
+          visibility="hidden"
+        ></line>
+      </svg>
+    </div>
+  </div>
+
+  <button id="resetBtn" class="reset-btn" type="button">重新開始</button>
+
+  <script>
+    const svgNS = "http://www.w3.org/2000/svg";
+    const scene = document.getElementById("scene");
+    const shapeLayer = document.getElementById("shapeLayer");
+    const previewLine = document.getElementById("previewLine");
+    const resetBtn = document.getElementById("resetBtn");
+    const helper = document.getElementById("helper");
+
+    const EPS = 1e-6;
+
+    let originalPolygon = [];
+    let drawing = false;
+    let hasCut = false;
+    let startPoint = null;
+
+    function setup() {
+      drawing = false;
+      hasCut = false;
+      startPoint = null;
+      previewLine.setAttribute("visibility", "hidden");
+      helper.textContent = "請由平行四邊形外面按住並拖曳畫線；如果直線穿過圖形，就會剪成兩塊並稍稍分開。";
+      buildParallelogram();
+      renderOriginalPolygon();
+    }
+
+    function buildParallelogram() {
+      // 底：高 = 3 : 2
+      const base = 360;
+      const height = 240;
+      const slant = 120;
+      const x = 240;
+      const y = 170;
+
+      originalPolygon = [
+        { x: x, y: y },
+        { x: x + base, y: y },
+        { x: x + base + slant, y: y + height },
+        { x: x + slant, y: y + height }
+      ];
+    }
+
+    function renderOriginalPolygon() {
+      shapeLayer.innerHTML = "";
+      const poly = createPolygon(originalPolygon, "original");
+      shapeLayer.appendChild(poly);
+    }
+
+    function createPolygon(points, className) {
+      const el = document.createElementNS(svgNS, "polygon");
+      el.setAttribute("points", pointsToString(points));
+      el.setAttribute("class", className);
+      return el;
+    }
+
+    function pointsToString(points) {
+      return points.map((p) => `${round(p.x)},${round(p.y)}`).join(" ");
+    }
+
+    function round(n) {
+      return Math.round(n * 100) / 100;
+    }
+
+    function getSvgPoint(event) {
+      const pt = scene.createSVGPoint();
+      pt.x = event.clientX;
+      pt.y = event.clientY;
+      return pt.matrixTransform(scene.getScreenCTM().inverse());
+    }
+
+    function pointInPolygon(point, polygon) {
+      let inside = false;
+      for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+        const xi = polygon[i].x;
+        const yi = polygon[i].y;
+        const xj = polygon[j].x;
+        const yj = polygon[j].y;
+
+        const intersect =
+          (yi > point.y) !== (yj > point.y) &&
+          point.x < ((xj - xi) * (point.y - yi)) / ((yj - yi) || EPS) + xi;
+
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
+
+    function signedDistance(point, A, B) {
+      return (B.x - A.x) * (point.y - A.y) - (B.y - A.y) * (point.x - A.x);
+    }
+
+    function cross(u, v) {
+      return u.x * v.y - u.y * v.x;
+    }
+
+    function dot(u, v) {
+      return u.x * v.x + u.y * v.y;
+    }
+
+    function subtract(a, b) {
+      return { x: a.x - b.x, y: a.y - b.y };
+    }
+
+    function add(a, b) {
+      return { x: a.x + b.x, y: a.y + b.y };
+    }
+
+    function scale(v, k) {
+      return { x: v.x * k, y: v.y * k };
+    }
+
+    function distance(a, b) {
+      return Math.hypot(a.x - b.x, a.y - b.y);
+    }
+
+    function uniquePoints(points, tolerance = 0.75) {
+      const output = [];
+      points.forEach((p) => {
+        if (!output.some((q) => distance(p, q) <= tolerance)) {
+          output.push({ x: p.x, y: p.y });
+        }
+      });
+      return output;
+    }
+
+    function segmentIntersection(A, B, C, D) {
+      const r = subtract(B, A);
+      const s = subtract(D, C);
+      const qmp = subtract(C, A);
+      const rxs = cross(r, s);
+      const qmpxr = cross(qmp, r);
+
+      if (Math.abs(rxs) < EPS && Math.abs(qmpxr) < EPS) {
+        // 共線時視作無效切割
+        return null;
+      }
+
+      if (Math.abs(rxs) < EPS && Math.abs(qmpxr) >= EPS) {
+        return null;
+      }
+
+      const t = cross(qmp, s) / rxs;
+      const u = cross(qmp, r) / rxs;
+
+      if (t >= -EPS && t <= 1 + EPS && u >= -EPS && u <= 1 + EPS) {
+        return {
+          x: A.x + t * r.x,
+          y: A.y + t * r.y
+        };
+      }
+
+      return null;
+    }
+
+    function segmentPolygonIntersections(A, B, polygon) {
+      const hits = [];
+      for (let i = 0; i < polygon.length; i++) {
+        const P = polygon[i];
+        const Q = polygon[(i + 1) % polygon.length];
+        const hit = segmentIntersection(A, B, P, Q);
+        if (hit) hits.push(hit);
+      }
+      return uniquePoints(hits);
+    }
+
+    function lineEdgeIntersection(S, E, ds, de) {
+      const t = ds / (ds - de);
+      return {
+        x: S.x + (E.x - S.x) * t,
+        y: S.y + (E.y - S.y) * t
+      };
+    }
+
+    function clipPolygonByLine(polygon, A, B, keepPositive) {
+      const clipped = [];
+
+      for (let i = 0; i < polygon.length; i++) {
+        const S = polygon[i];
+        const E = polygon[(i + 1) % polygon.length];
+
+        const ds = signedDistance(S, A, B);
+        const de = signedDistance(E, A, B);
+
+        const insideS = keepPositive ? ds >= -EPS : ds <= EPS;
+        const insideE = keepPositive ? de >= -EPS : de <= EPS;
+
+        if (insideS && insideE) {
+          clipped.push({ x: E.x, y: E.y });
+        } else if (insideS && !insideE) {
+          if (Math.abs(ds - de) > EPS) {
+            clipped.push(lineEdgeIntersection(S, E, ds, de));
+          }
+        } else if (!insideS && insideE) {
+          if (Math.abs(ds - de) > EPS) {
+            clipped.push(lineEdgeIntersection(S, E, ds, de));
+          }
+          clipped.push({ x: E.x, y: E.y });
+        }
+      }
+
+      return cleanPolygon(clipped);
+    }
+
+    function cleanPolygon(points) {
+      if (!points.length) return [];
+      const cleaned = [];
+
+      points.forEach((p) => {
+        if (!cleaned.length || distance(cleaned[cleaned.length - 1], p) > 0.5) {
+          cleaned.push({ x: p.x, y: p.y });
+        }
+      });
+
+      if (cleaned.length > 1 && distance(cleaned[0], cleaned[cleaned.length - 1]) <= 0.5) {
+        cleaned.pop();
+      }
+
+      return cleaned;
+    }
+
+    function polygonArea(points) {
+      let area = 0;
+      for (let i = 0; i < points.length; i++) {
+        const p = points[i];
+        const q = points[(i + 1) % points.length];
+        area += p.x * q.y - q.x * p.y;
+      }
+      return area / 2;
+    }
+
+    function polygonCentroid(points) {
+      const area = polygonArea(points);
+
+      if (Math.abs(area) < EPS) {
+        const avg = points.reduce((acc, p) => add(acc, p), { x: 0, y: 0 });
+        return scale(avg, 1 / points.length);
+      }
+
+      let cx = 0;
+      let cy = 0;
+      for (let i = 0; i < points.length; i++) {
+        const p = points[i];
+        const q = points[(i + 1) % points.length];
+        const factor = p.x * q.y - q.x * p.y;
+        cx += (p.x + q.x) * factor;
+        cy += (p.y + q.y) * factor;
+      }
+
+      return {
+        x: cx / (6 * area),
+        y: cy / (6 * area)
+      };
+    }
+
+    function linePolygonIntersections(polygon, A, B) {
+      const hits = [];
+
+      for (let i = 0; i < polygon.length; i++) {
+        const S = polygon[i];
+        const E = polygon[(i + 1) % polygon.length];
+        const ds = signedDistance(S, A, B);
+        const de = signedDistance(E, A, B);
+
+        if (Math.abs(ds) < 0.01) {
+          hits.push({ x: S.x, y: S.y });
+        }
+
+        if (ds * de < -EPS) {
+          hits.push(lineEdgeIntersection(S, E, ds, de));
+        }
+      }
+
+      const unique = uniquePoints(hits);
+      const direction = subtract(B, A);
+      unique.sort(
+        (p1, p2) =>
+          dot(subtract(p1, A), direction) - dot(subtract(p2, A), direction)
+      );
+
+      return unique.slice(0, 2);
+    }
+
+    function translatePolygon(points, shift) {
+      return points.map((p) => ({
+        x: p.x + shift.x,
+        y: p.y + shift.y
+      }));
+    }
+
+    function unitNormal(A, B) {
+      const dx = B.x - A.x;
+      const dy = B.y - A.y;
+      const len = Math.hypot(dx, dy) || 1;
+      return {
+        x: -dy / len,
+        y: dx / len
+      };
+    }
+
+    function tryCut(A, B) {
+      if (distance(A, B) < 12) {
+        helper.textContent = "條線太短了，請再試一次。";
+        return;
+      }
+
+      const segmentHits = segmentPolygonIntersections(A, B, originalPolygon);
+      if (segmentHits.length < 2) {
+        helper.textContent = "條線未有穿過平行四邊形，請再試一次。";
+        return;
+      }
+
+      const partA = clipPolygonByLine(originalPolygon, A, B, true);
+      const partB = clipPolygonByLine(originalPolygon, A, B, false);
+
+      const areaA = Math.abs(polygonArea(partA));
+      const areaB = Math.abs(polygonArea(partB));
+
+      if (areaA < 20 || areaB < 20) {
+        helper.textContent = "這條線未能把圖形真正剪成兩塊，請再試一次。";
+        return;
+      }
+
+      const cutPoints = linePolygonIntersections(originalPolygon, A, B);
+      if (cutPoints.length < 2) {
+        helper.textContent = "未能找到剪開位置，請再試一次。";
+        return;
+      }
+
+      const normal = unitNormal(A, B);
+      const centroidA = polygonCentroid(partA);
+      const centroidB = polygonCentroid(partB);
+      const dirA = Math.sign(signedDistance(centroidA, A, B)) || 1;
+      const dirB = Math.sign(signedDistance(centroidB, A, B)) || -1;
+      const gap = 18;
+
+      const shiftA = {
+        x: normal.x * gap * 0.5 * dirA,
+        y: normal.y * gap * 0.5 * dirA
+      };
+
+      const shiftB = {
+        x: normal.x * gap * 0.5 * dirB,
+        y: normal.y * gap * 0.5 * dirB
+      };
+
+      const movedA = translatePolygon(partA, shiftA);
+      const movedB = translatePolygon(partB, shiftB);
+
+      shapeLayer.innerHTML = "";
+
+      const polyA = createPolygon(movedA, "pieceA");
+      const polyB = createPolygon(movedB, "pieceB");
+      const cutLine = document.createElementNS(svgNS, "line");
+      cutLine.setAttribute("class", "cut-line");
+      cutLine.setAttribute("x1", round(cutPoints[0].x));
+      cutLine.setAttribute("y1", round(cutPoints[0].y));
+      cutLine.setAttribute("x2", round(cutPoints[1].x));
+      cutLine.setAttribute("y2", round(cutPoints[1].y));
+
+      shapeLayer.appendChild(polyA);
+      shapeLayer.appendChild(polyB);
+      shapeLayer.appendChild(cutLine);
+
+      previewLine.setAttribute("visibility", "hidden");
+      helper.textContent = "已剪開！按右下角「重新開始」可以再玩一次。";
+      hasCut = true;
+    }
+
+    scene.addEventListener("pointerdown", (event) => {
+      if (hasCut) {
+        helper.textContent = "已剪開！按右下角「重新開始」可以再玩一次。";
+        return;
+      }
+
+      const pt = getSvgPoint(event);
+
+      if (pointInPolygon(pt, originalPolygon)) {
+        helper.textContent = "請由平行四邊形外面開始畫線。";
+        return;
+      }
+
+      drawing = true;
+      startPoint = pt;
+      previewLine.setAttribute("x1", round(pt.x));
+      previewLine.setAttribute("y1", round(pt.y));
+      previewLine.setAttribute("x2", round(pt.x));
+      previewLine.setAttribute("y2", round(pt.y));
+      previewLine.setAttribute("visibility", "visible");
+
+      if (scene.setPointerCapture) {
+        scene.setPointerCapture(event.pointerId);
+      }
+    });
+
+    scene.addEventListener("pointermove", (event) => {
+      if (!drawing) return;
+      const pt = getSvgPoint(event);
+      previewLine.setAttribute("x2", round(pt.x));
+      previewLine.setAttribute("y2", round(pt.y));
+    });
+
+    function finishDrawing(event) {
+      if (!drawing) return;
+      drawing = false;
+
+      const endPoint = getSvgPoint(event);
+      previewLine.setAttribute("x2", round(endPoint.x));
+      previewLine.setAttribute("y2", round(endPoint.y));
+      tryCut(startPoint, endPoint);
+      startPoint = null;
+
+      if (scene.releasePointerCapture && scene.hasPointerCapture && scene.hasPointerCapture(event.pointerId)) {
+        scene.releasePointerCapture(event.pointerId);
+      }
+    }
+
+    scene.addEventListener("pointerup", finishDrawing);
+    scene.addEventListener("pointercancel", finishDrawing);
+
+    resetBtn.addEventListener("click", setup);
+
+    setup();
+  </script>
+</body>
+</html>
