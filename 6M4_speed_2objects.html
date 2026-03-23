@@ -1,0 +1,1545 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>行程問題互動模擬器</title>
+  <style>
+    :root{
+      --bg: #eef6fb;
+      --card: rgba(255,255,255,0.92);
+      --line: #d7e4ef;
+      --text: #1f2d3d;
+      --muted: #5d7084;
+      --blue: #4f9cff;
+      --blue-deep: #2f6fdb;
+      --green: #43c37b;
+      --green-deep: #2f9b5f;
+      --pink: #ff6e88;
+      --orange: #ffb43c;
+      --shadow: 0 18px 50px rgba(47, 86, 128, 0.12);
+      --radius: 22px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body{
+      margin: 0;
+      font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top right, rgba(79,156,255,0.16), transparent 22rem),
+        radial-gradient(circle at left top, rgba(67,195,123,0.14), transparent 20rem),
+        linear-gradient(180deg, #f7fbff 0%, #edf5fb 52%, #e7f0f8 100%);
+      min-height: 100vh;
+    }
+
+    .app{
+      width: min(1200px, calc(100vw - 28px));
+      margin: 22px auto 40px;
+    }
+
+    .hero{
+      display: grid;
+      grid-template-columns: 1.35fr 1fr;
+      gap: 18px;
+      align-items: center;
+      padding: 24px 26px;
+      border-radius: 28px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.94), rgba(243,249,255,0.94));
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255,255,255,0.7);
+    }
+
+    .eyebrow{
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 10px;
+      padding: 6px 10px;
+      background: rgba(79,156,255,0.12);
+      color: var(--blue-deep);
+      border-radius: 999px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .hero h1{
+      margin: 0;
+      font-size: clamp(1.7rem, 3.2vw, 2.65rem);
+      line-height: 1.15;
+    }
+
+    .subtitle{
+      margin: 12px 0 0;
+      color: var(--muted);
+      line-height: 1.75;
+      font-size: 1rem;
+    }
+
+    .hero-side{
+      display: grid;
+      gap: 10px;
+      justify-items: end;
+    }
+
+    .chip-group{
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .chip{
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 14px;
+      border-radius: 999px;
+      font-size: 0.92rem;
+      font-weight: 700;
+      background: rgba(79,156,255,0.12);
+      color: var(--blue-deep);
+      border: 1px solid rgba(79,156,255,0.18);
+    }
+
+    .chip.secondary{
+      background: rgba(67,195,123,0.12);
+      color: #22764b;
+      border-color: rgba(67,195,123,0.18);
+    }
+
+    .chip.warning{
+      background: rgba(255,180,60,0.14);
+      color: #8c5a06;
+      border-color: rgba(255,180,60,0.2);
+    }
+
+    .card{
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255,255,255,0.72);
+      backdrop-filter: blur(8px);
+    }
+
+    .stack{
+      display: grid;
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .mode-card{
+      padding: 22px;
+    }
+
+    .mode-row{
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .mode-tabs{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .mode-btn{
+      border: 0;
+      border-radius: 14px;
+      padding: 12px 18px;
+      background: #e4edf6;
+      color: #37506a;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+      box-shadow: inset 0 -1px 0 rgba(255,255,255,0.45);
+    }
+
+    .mode-btn:hover:enabled{
+      transform: translateY(-1px);
+      background: #d7e7f8;
+    }
+
+    .mode-btn.active{
+      background: linear-gradient(180deg, var(--blue), var(--blue-deep));
+      color: white;
+      box-shadow: 0 10px 20px rgba(47,111,219,0.22);
+    }
+
+    .mode-btn:disabled{
+      opacity: 0.66;
+      cursor: not-allowed;
+    }
+
+    .mode-description{
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 0.98rem;
+    }
+
+    .scene-card{
+      padding: 18px;
+      overflow: hidden;
+    }
+
+    .scene-toolbar{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .scene{
+      position: relative;
+      height: 330px;
+      border-radius: 26px;
+      overflow: hidden;
+      background: linear-gradient(180deg, #a9dcff 0%, #9fd7fb 52%, #97d1f4 53%, #8fd184 53%, #8bc97f 74%, #78bd76 100%);
+      border: 5px solid rgba(255,255,255,0.75);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25);
+    }
+
+    .scene::before{
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 80px;
+      height: 12px;
+      background: rgba(59, 132, 74, 0.22);
+      box-shadow:
+        0 26px 0 rgba(68, 122, 67, 0.16),
+        0 -130px 0 rgba(255,255,255,0.08);
+    }
+
+    .scene::after{
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 38px;
+      height: 5px;
+      background: repeating-linear-gradient(
+        90deg,
+        rgba(255,255,255,0.92) 0,
+        rgba(255,255,255,0.92) 38px,
+        transparent 38px,
+        transparent 58px
+      );
+      opacity: 0.65;
+    }
+
+    .sun{
+      position: absolute;
+      top: 28px;
+      right: 36px;
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #fff9c6, #ffd35f 55%, #ffba2c 100%);
+      box-shadow: 0 0 38px rgba(255,211,95,0.55);
+    }
+
+    .sun::before{
+      content: "";
+      position: absolute;
+      inset: -10px;
+      border-radius: 50%;
+      background:
+        conic-gradient(from 0deg, rgba(255,189,61,0.8), rgba(255,189,61,0) 35deg 55deg, rgba(255,189,61,0.8) 60deg 85deg, rgba(255,189,61,0) 95deg 115deg, rgba(255,189,61,0.8) 120deg 145deg, rgba(255,189,61,0) 155deg 175deg, rgba(255,189,61,0.8) 180deg 205deg, rgba(255,189,61,0) 215deg 235deg, rgba(255,189,61,0.8) 240deg 265deg, rgba(255,189,61,0) 275deg 295deg, rgba(255,189,61,0.8) 300deg 325deg, rgba(255,189,61,0) 335deg 355deg);
+      -webkit-mask: radial-gradient(circle, transparent 58%, black 59%);
+              mask: radial-gradient(circle, transparent 58%, black 59%);
+      opacity: 0.9;
+    }
+
+    .cloud{
+      position: absolute;
+      background: rgba(255,255,255,0.78);
+      border-radius: 999px;
+      filter: drop-shadow(0 4px 8px rgba(255,255,255,0.18));
+    }
+
+    .cloud.small{ top: 58px; left: 52px; width: 74px; height: 24px; }
+    .cloud.medium{ top: 92px; left: 180px; width: 92px; height: 28px; opacity: 0.95; }
+    .cloud.large{ top: 52px; right: 210px; width: 120px; height: 32px; opacity: 0.9; }
+
+    .cloud::before, .cloud::after{
+      content: "";
+      position: absolute;
+      background: inherit;
+      border-radius: 50%;
+    }
+
+    .cloud.small::before{ width: 28px; height: 28px; left: 8px; top: -10px; }
+    .cloud.small::after{ width: 22px; height: 22px; right: 10px; top: -8px; }
+
+    .cloud.medium::before{ width: 34px; height: 34px; left: 12px; top: -14px; }
+    .cloud.medium::after{ width: 28px; height: 28px; right: 16px; top: -10px; }
+
+    .cloud.large::before{ width: 42px; height: 42px; left: 18px; top: -16px; }
+    .cloud.large::after{ width: 36px; height: 36px; right: 18px; top: -14px; }
+
+    .start-line, .end-line, .center-line{
+      position: absolute;
+      bottom: 30px;
+      width: 6px;
+      height: 172px;
+      border-radius: 99px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.9) 35%, rgba(255,255,255,0.25) 100%);
+      opacity: 0.45;
+    }
+
+    .start-line::before, .end-line::before, .center-line::before{
+      content: "";
+      position: absolute;
+      left: -12px;
+      right: -12px;
+      top: 14px;
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.5);
+      filter: blur(3px);
+      opacity: 0.25;
+    }
+
+    .marker-pill{
+      position: absolute;
+      bottom: 204px;
+      transform: translateX(-50%);
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.86);
+      color: #274663;
+      font-size: 0.86rem;
+      font-weight: 700;
+      border: 1px solid rgba(255,255,255,0.72);
+      box-shadow: 0 10px 18px rgba(57,86,114,0.08);
+      white-space: nowrap;
+    }
+
+    .marker-pill.is-hidden,
+    .start-line.is-hidden,
+    .end-line.is-hidden,
+    .center-line.is-hidden{
+      display: none;
+    }
+
+    .runner{
+      position: absolute;
+      bottom: 44px;
+      width: 72px;
+      transform: translateX(-50%);
+      transition: left 0.22s linear, transform 0.22s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      z-index: 3;
+    }
+
+    .runner .label{
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.94);
+      color: #1f2d3d;
+      font-size: 0.9rem;
+      font-weight: 800;
+      border: 1px solid rgba(255,255,255,0.7);
+      box-shadow: 0 10px 20px rgba(38,67,94,0.09);
+      white-space: nowrap;
+      transition: transform 0.22s ease;
+    }
+
+    .runner .person{
+      position: relative;
+      width: 48px;
+      height: 62px;
+    }
+
+    .runner .anchor-point{
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #ff4d62;
+      border: 2px solid rgba(255,255,255,0.88);
+      box-shadow: 0 2px 6px rgba(160, 39, 61, 0.28);
+      z-index: 4;
+    }
+
+    .runner .anchor-right{
+      left: 34px;
+      top: 29px;
+    }
+
+    .runner .anchor-left{
+      left: 4px;
+      top: 29px;
+    }
+
+    .runner .head{
+      position: absolute;
+      top: 0;
+      left: 13px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--person-color);
+      box-shadow: inset 0 -2px 0 rgba(0,0,0,0.08);
+    }
+
+    .runner .torso{
+      position: absolute;
+      top: 21px;
+      left: 19px;
+      width: 10px;
+      height: 20px;
+      border-radius: 8px;
+      background: var(--person-shirt);
+    }
+
+    .runner .arm-left,
+    .runner .arm-right,
+    .runner .leg-left,
+    .runner .leg-right{
+      position: absolute;
+      transform-origin: top center;
+      border-radius: 999px;
+    }
+
+    .runner .arm-left,
+    .runner .arm-right{
+      top: 22px;
+      width: 4px;
+      height: 16px;
+      background: #304357;
+    }
+
+    .runner .leg-left,
+    .runner .leg-right{
+      top: 38px;
+      width: 4px;
+      height: 18px;
+      background: #23384b;
+    }
+
+    .runner .arm-left{ left: 17px; transform: rotate(42deg); }
+    .runner .arm-right{ left: 27px; transform: rotate(-42deg); }
+    .runner .leg-left{ left: 17px; transform: rotate(26deg); }
+    .runner .leg-right{ left: 27px; transform: rotate(-26deg); }
+
+    .runner-a{
+      --person-color: #ffb43c;
+      --person-shirt: #4b92ff;
+    }
+
+    .runner-b{
+      --person-color: #ff6e88;
+      --person-shirt: #2cbf74;
+    }
+
+    .runner.hidden{
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .control-grid{
+      display: grid;
+      grid-template-columns: minmax(320px, 1.15fr) minmax(300px, 0.95fr);
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .settings-card,
+    .action-card{
+      padding: 22px;
+    }
+
+    .card-title{
+      margin: 0 0 6px;
+      font-size: 1.22rem;
+    }
+
+    .small-note{
+      margin: 0 0 18px;
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 0.94rem;
+    }
+
+    .input-grid{
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0,1fr));
+      gap: 14px;
+    }
+
+    .field{
+      display: grid;
+      gap: 8px;
+    }
+
+    .field.full{
+      grid-column: 1 / -1;
+    }
+
+    .field label{
+      font-size: 0.94rem;
+      font-weight: 700;
+      color: #36516c;
+    }
+
+    .field input{
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px 14px;
+      font: inherit;
+      color: var(--text);
+      background: rgba(249,252,255,0.95);
+      outline: none;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    }
+
+    .field input:focus{
+      border-color: rgba(79,156,255,0.7);
+      box-shadow: 0 0 0 4px rgba(79,156,255,0.12);
+      background: #fff;
+    }
+
+    .field input:disabled{
+      background: #f2f6fa;
+      color: #8ba0b3;
+      cursor: not-allowed;
+    }
+
+    .hidden{
+      display: none !important;
+    }
+
+    .time-box{
+      text-align: center;
+      padding: 8px 12px 12px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(79,156,255,0.09), rgba(79,156,255,0.02));
+      border: 1px solid rgba(79,156,255,0.08);
+    }
+
+    .time-caption{
+      color: var(--muted);
+      font-size: 0.92rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .time-display{
+      margin-top: 8px;
+      font-size: clamp(1.9rem, 4vw, 3rem);
+      font-weight: 900;
+      color: var(--blue-deep);
+      line-height: 1.1;
+    }
+
+    .status-box{
+      margin: 16px 0 18px;
+      min-height: 68px;
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: rgba(242,248,255,0.86);
+      border: 1px solid rgba(79,156,255,0.1);
+      color: #35526c;
+      line-height: 1.7;
+      font-size: 0.98rem;
+    }
+
+    .button-grid{
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0,1fr));
+      gap: 12px;
+    }
+
+    .button-grid .full{
+      grid-column: 1 / -1;
+    }
+
+    button.action{
+      border: 0;
+      border-radius: 16px;
+      padding: 14px 16px;
+      font: inherit;
+      font-weight: 900;
+      cursor: pointer;
+      color: white;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease, opacity 0.18s ease;
+      box-shadow: 0 14px 26px rgba(43,74,111,0.12);
+    }
+
+    button.action:hover:enabled{
+      transform: translateY(-1px);
+      filter: brightness(1.03);
+    }
+
+    button.action:disabled{
+      opacity: 0.72;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .step-btn{ background: linear-gradient(180deg, var(--blue), var(--blue-deep)); }
+    .fast-btn{ background: linear-gradient(180deg, var(--green), var(--green-deep)); }
+    .reset-btn{ background: linear-gradient(180deg, #ff889e, var(--pink)); }
+
+    .fast-note{
+      margin: 14px 0 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+      line-height: 1.7;
+      text-align: center;
+    }
+
+    .records-card{
+      padding: 22px;
+    }
+
+    .records-head{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .records-head h2{
+      margin: 0;
+      font-size: 1.22rem;
+    }
+
+    .records-meta{
+      color: var(--muted);
+      font-size: 0.94rem;
+    }
+
+    .table-wrap{
+      overflow: auto;
+      max-height: 470px;
+      border-radius: 18px;
+      border: 1px solid rgba(214,227,239,0.95);
+      background: rgba(255,255,255,0.72);
+    }
+
+    table{
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      min-width: 620px;
+    }
+
+    thead th{
+      position: sticky;
+      top: 0;
+      background: linear-gradient(180deg, #eaf2fb, #deebf8);
+      color: #294763;
+      font-size: 0.95rem;
+      text-align: center;
+      padding: 14px 10px;
+      z-index: 1;
+      border-bottom: 1px solid var(--line);
+    }
+
+    tbody td{
+      text-align: center;
+      padding: 12px 10px;
+      border-bottom: 1px solid #ebf1f6;
+      font-size: 0.96rem;
+      background: rgba(255,255,255,0.8);
+    }
+
+    tbody tr:nth-child(even) td{
+      background: rgba(247,251,255,0.8);
+    }
+
+    tbody tr:last-child td{
+      border-bottom: 0;
+    }
+
+    .empty-cell{
+      padding: 28px 16px;
+      color: var(--muted);
+      line-height: 1.7;
+      background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(247,251,255,0.92));
+    }
+
+    tfoot td{
+      padding: 14px 16px;
+      background: rgba(255,245,210,0.95);
+      color: #6b4d00;
+      font-weight: 800;
+      border-top: 1px solid rgba(255,200,84,0.45);
+      text-align: center;
+    }
+
+    .footer-note{
+      margin-top: 18px;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.7;
+      font-size: 0.92rem;
+    }
+
+    @media (max-width: 960px){
+      .hero{
+        grid-template-columns: 1fr;
+      }
+      .hero-side{
+        justify-items: start;
+      }
+      .chip-group{
+        justify-content: flex-start;
+      }
+      .control-grid{
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 720px){
+      .app{
+        width: min(100vw - 18px, 1200px);
+      }
+      .hero, .mode-card, .settings-card, .action-card, .records-card{
+        padding: 18px;
+      }
+      .input-grid,
+      .button-grid{
+        grid-template-columns: 1fr;
+      }
+      .field.full,
+      .button-grid .full{
+        grid-column: auto;
+      }
+      .scene{
+        height: 290px;
+      }
+      .scene-toolbar{
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .mode-row{
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">🚶‍♀️ 行程問題互動模擬器</p>
+        <h1>兩人行走三種情境</h1>
+        <p class="subtitle">
+          同向而行、迎面而行、背向而行三種模式都可分別設定自己的變數。
+          你可以逐秒前進、快速前進、重設，並在下方保留完整的探究數據記錄。
+        </p>
+      </div>
+      <div class="hero-side">
+        <div class="chip-group">
+          <span class="chip">🎯 可自訂速度與延遲</span>
+          <span class="chip secondary">📊 自動記錄探究數據</span>
+          <span class="chip warning">⚡ 快進模式支援動畫</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="stack">
+      <section class="card mode-card">
+        <div class="mode-row">
+          <div class="mode-tabs" aria-label="模式選擇">
+            <button class="mode-btn active" data-mode="same" type="button">同向而行</button>
+            <button class="mode-btn" data-mode="face" type="button">迎面而行</button>
+            <button class="mode-btn" data-mode="back" type="button">背向而行</button>
+          </div>
+          <p class="mode-description" id="modeDescription"></p>
+        </div>
+
+        <section class="card scene-card">
+          <div class="scene-toolbar">
+            <span class="chip" id="formulaChip"></span>
+            <span class="chip secondary" id="scaleChip"></span>
+          </div>
+          <div class="scene" id="scene" aria-label="動畫跑道">
+            <div class="sun" aria-hidden="true"></div>
+            <div class="cloud small" aria-hidden="true"></div>
+            <div class="cloud medium" aria-hidden="true"></div>
+            <div class="cloud large" aria-hidden="true"></div>
+
+            <div class="start-line" id="startLine" aria-hidden="true"></div>
+            <div class="end-line" id="endLine" aria-hidden="true"></div>
+            <div class="center-line" id="centerLine" aria-hidden="true"></div>
+
+            <div class="marker-pill" id="startMarker">共同起點</div>
+            <div class="marker-pill" id="endMarker">另一端</div>
+            <div class="marker-pill" id="centerMarker">共同起點</div>
+
+            <div class="runner runner-a" id="runnerA">
+              <div class="label" id="labelA">甲：0.0 m</div>
+              <div class="person" aria-hidden="true">
+                <span class="head"></span>
+                <span class="torso"></span>
+                <span class="arm-left"></span>
+                <span class="arm-right"></span>
+                <span class="leg-left"></span>
+                <span class="leg-right"></span>
+                <span class="anchor-point anchor-right"></span>
+              </div>
+            </div>
+
+            <div class="runner runner-b" id="runnerB">
+              <div class="label" id="labelB">乙：0.0 m</div>
+              <div class="person" aria-hidden="true">
+                <span class="head"></span>
+                <span class="torso"></span>
+                <span class="arm-left"></span>
+                <span class="arm-right"></span>
+                <span class="leg-left"></span>
+                <span class="leg-right"></span>
+                <span class="anchor-point anchor-left"></span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div class="control-grid">
+          <section class="card settings-card">
+            <h2 class="card-title">⚙️ 設定變數</h2>
+            <p class="small-note">
+              每一種模式都會記住自己的最近一次設定。改動後會自動套用並重設目前模擬。
+            </p>
+
+            <div class="input-grid">
+              <div class="field full" id="totalLengthField">
+                <label for="totalLengthInput">路程總長（m）</label>
+                <input id="totalLengthInput" type="number" min="1" step="1" inputmode="decimal" />
+              </div>
+
+              <div class="field">
+                <label for="aSpeedInput">甲速率（m/s）</label>
+                <input id="aSpeedInput" type="number" min="0" step="0.1" inputmode="decimal" />
+              </div>
+
+              <div class="field">
+                <label for="bSpeedInput">乙速率（m/s）</label>
+                <input id="bSpeedInput" type="number" min="0" step="0.1" inputmode="decimal" />
+              </div>
+
+              <div class="field">
+                <label for="aDelayInput">甲延遲出發（s）</label>
+                <input id="aDelayInput" type="number" min="0" step="0.1" inputmode="decimal" />
+              </div>
+
+              <div class="field">
+                <label for="bDelayInput">乙延遲出發（s）</label>
+                <input id="bDelayInput" type="number" min="0" step="0.1" inputmode="decimal" />
+              </div>
+            </div>
+          </section>
+
+          <section class="card action-card">
+            <div class="time-box">
+              <div class="time-caption">目前時間</div>
+              <div class="time-display" id="timeDisplay">0 秒</div>
+            </div>
+
+            <div class="status-box" id="statusText" aria-live="polite"></div>
+
+            <div class="button-grid">
+              <button class="action step-btn" id="stepBtn" type="button">⏱️ 逐秒前進</button>
+              <button class="action fast-btn" id="fastBtn" type="button">🚀 快速前進</button>
+              <button class="action reset-btn full" id="resetBtn" type="button">🔁 重設</button>
+            </div>
+
+            <p class="fast-note" id="fastNote"></p>
+          </section>
+        </div>
+      </section>
+
+      <section class="card records-card">
+        <div class="records-head">
+          <h2>📈 探究數據記錄</h2>
+          <div class="records-meta" id="recordsMeta">尚未開始記錄</div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">時間（s）</th>
+                <th scope="col">甲累計路程（m）</th>
+                <th scope="col">乙累計路程（m）</th>
+                <th scope="col">二人相距（m）</th>
+              </tr>
+            </thead>
+            <tbody id="recordBody"></tbody>
+            <tfoot id="recordFoot"></tfoot>
+          </table>
+        </div>
+
+        <p class="footer-note">
+          本頁為單一 HTML 檔，含 HTML、CSS、JavaScript，無需外部框架即可離線使用。
+        </p>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    (() => {
+      const EPS = 1e-9;
+      const FAST_FORWARD_SECONDS = 30;
+      const FAST_FORWARD_DELAY_MS = 130;
+      const RUNNER_WIDTH = 72;
+      const RUNNER_CENTER = RUNNER_WIDTH / 2;
+      const ANCHOR_CENTER_FROM_LEFT = {
+        a: 51,
+        b: 21
+      };
+      const RUNNER_CENTER_ADJUST = {
+        a: RUNNER_CENTER - ANCHOR_CENTER_FROM_LEFT.a,
+        b: RUNNER_CENTER - ANCHOR_CENTER_FROM_LEFT.b
+      };
+
+      const MODE_INFO = {
+        same: {
+          label: "同向而行",
+          description: "甲、乙由同一地點出發，朝同一方向前進。可用來觀察誰領先，以及兩人相距如何隨速度差改變。",
+          formula: "二人相距 = |甲累計路程 − 乙累計路程|",
+          quickHint: `快速前進每次自動模擬 ${FAST_FORWARD_SECONDS} 秒。`,
+          totalLengthVisible: false
+        },
+        face: {
+          label: "迎面而行",
+          description: "甲、乙由路程兩端同時或先後出發，向對方靠近。當兩人距離變成 0 時，模擬會停止並顯示相遇時間。",
+          formula: "二人相距 = 路程總長 −（甲累計路程 + 乙累計路程）",
+          quickHint: "快速前進會持續到兩人相遇；若目前設定不會相遇，則改為自動模擬 30 秒。",
+          totalLengthVisible: true
+        },
+        back: {
+          label: "背向而行",
+          description: "甲、乙由同一地點出發，但朝相反方向前進。可用來觀察兩人之間距離如何隨時間愈來愈大。",
+          formula: "二人相距 = 甲累計路程 + 乙累計路程",
+          quickHint: `快速前進每次自動模擬 ${FAST_FORWARD_SECONDS} 秒。`,
+          totalLengthVisible: false
+        }
+      };
+
+      const defaultConfigs = {
+        same: { aSpeed: 5, bSpeed: 3, aDelay: 0, bDelay: 0, totalLength: 100 },
+        face: { aSpeed: 5, bSpeed: 3, aDelay: 0, bDelay: 0, totalLength: 100 },
+        back: { aSpeed: 5, bSpeed: 3, aDelay: 0, bDelay: 0, totalLength: 100 }
+      };
+
+      const state = {
+        mode: "same",
+        configs: JSON.parse(JSON.stringify(defaultConfigs)),
+        time: 0,
+        rows: [],
+        autoRunning: false,
+        timerId: null,
+        met: false
+      };
+
+      const refs = {
+        modeButtons: [...document.querySelectorAll(".mode-btn")],
+        modeDescription: document.getElementById("modeDescription"),
+        formulaChip: document.getElementById("formulaChip"),
+        scaleChip: document.getElementById("scaleChip"),
+        scene: document.getElementById("scene"),
+        startLine: document.getElementById("startLine"),
+        endLine: document.getElementById("endLine"),
+        centerLine: document.getElementById("centerLine"),
+        startMarker: document.getElementById("startMarker"),
+        endMarker: document.getElementById("endMarker"),
+        centerMarker: document.getElementById("centerMarker"),
+        runnerA: document.getElementById("runnerA"),
+        runnerB: document.getElementById("runnerB"),
+        labelA: document.getElementById("labelA"),
+        labelB: document.getElementById("labelB"),
+        totalLengthField: document.getElementById("totalLengthField"),
+        totalLengthInput: document.getElementById("totalLengthInput"),
+        aSpeedInput: document.getElementById("aSpeedInput"),
+        bSpeedInput: document.getElementById("bSpeedInput"),
+        aDelayInput: document.getElementById("aDelayInput"),
+        bDelayInput: document.getElementById("bDelayInput"),
+        timeDisplay: document.getElementById("timeDisplay"),
+        statusText: document.getElementById("statusText"),
+        stepBtn: document.getElementById("stepBtn"),
+        fastBtn: document.getElementById("fastBtn"),
+        resetBtn: document.getElementById("resetBtn"),
+        fastNote: document.getElementById("fastNote"),
+        recordBody: document.getElementById("recordBody"),
+        recordFoot: document.getElementById("recordFoot"),
+        recordsMeta: document.getElementById("recordsMeta")
+      };
+
+      function cloneConfig(config) {
+        return JSON.parse(JSON.stringify(config));
+      }
+
+      function currentConfig() {
+        return state.configs[state.mode];
+      }
+
+      function clampNumber(value, fallback, min = 0) {
+        const num = Number(value);
+        if (!Number.isFinite(num)) return fallback;
+        return Math.max(min, num);
+      }
+
+      function roundTo(value, digits = 1) {
+        const factor = 10 ** digits;
+        return Math.round((value + Number.EPSILON) * factor) / factor;
+      }
+
+      function formatDistance(value) {
+        return `${roundTo(value, 1).toFixed(1)} m`;
+      }
+
+      function formatTableTime(value) {
+        if (Math.abs(value - Math.round(value)) < EPS) {
+          return `${Math.round(value)}`;
+        }
+        return roundTo(value, 2).toFixed(2);
+      }
+
+      function formatTimeDisplay(value) {
+        if (Math.abs(value - Math.round(value)) < EPS) {
+          return `${Math.round(value)} 秒`;
+        }
+        return `${roundTo(value, 2).toFixed(2)} 秒`;
+      }
+
+      function travelDistance(speed, delay, time) {
+        return Math.max(0, time - delay) * speed;
+      }
+
+      function computeMeetingTime(config) {
+        const totalLength = clampNumber(config.totalLength, 100, 1);
+        const aSpeed = clampNumber(config.aSpeed, 0, 0);
+        const bSpeed = clampNumber(config.bSpeed, 0, 0);
+        const aDelay = clampNumber(config.aDelay, 0, 0);
+        const bDelay = clampNumber(config.bDelay, 0, 0);
+
+        if (totalLength <= 0) return 0;
+        if (aSpeed <= 0 && bSpeed <= 0) return Infinity;
+
+        const rawEvents = [
+          { time: aDelay, speed: aSpeed },
+          { time: bDelay, speed: bSpeed }
+        ].sort((left, right) => left.time - right.time);
+
+        let i = 0;
+        let lastTime = 0;
+        let combinedSpeed = 0;
+        let closedDistance = 0;
+
+        while (i < rawEvents.length) {
+          const eventTime = rawEvents[i].time;
+
+          if (eventTime > lastTime) {
+            const duration = eventTime - lastTime;
+            if (combinedSpeed > 0) {
+              const possibleDistance = closedDistance + combinedSpeed * duration;
+              if (possibleDistance >= totalLength - EPS) {
+                return lastTime + (totalLength - closedDistance) / combinedSpeed;
+              }
+              closedDistance = possibleDistance;
+            }
+            lastTime = eventTime;
+          }
+
+          while (i < rawEvents.length && Math.abs(rawEvents[i].time - eventTime) < EPS) {
+            combinedSpeed += Math.max(0, rawEvents[i].speed);
+            i += 1;
+          }
+        }
+
+        if (combinedSpeed <= 0) return Infinity;
+        return lastTime + (totalLength - closedDistance) / combinedSpeed;
+      }
+
+      function getSnapshot(time = state.time) {
+        const config = currentConfig();
+        const aDistance = travelDistance(config.aSpeed, config.aDelay, time);
+        const bDistance = travelDistance(config.bSpeed, config.bDelay, time);
+        const meetingTime = state.mode === "face" ? computeMeetingTime(config) : Infinity;
+
+        if (state.mode === "same") {
+          const gap = Math.abs(aDistance - bDistance);
+          let insight = "兩人暫時並行。";
+          if (gap > EPS) {
+            if (aDistance > bDistance) {
+              insight = `甲目前領先 ${formatDistance(gap)}。`;
+            } else {
+              insight = `乙目前領先 ${formatDistance(gap)}。`;
+            }
+          }
+          return {
+            time,
+            aDistance,
+            bDistance,
+            gap,
+            met: false,
+            meetingTime,
+            insight
+          };
+        }
+
+        if (state.mode === "back") {
+          const gap = aDistance + bDistance;
+          return {
+            time,
+            aDistance,
+            bDistance,
+            gap,
+            met: false,
+            meetingTime,
+            insight: `兩人目前相距 ${formatDistance(gap)}。`
+          };
+        }
+
+        if (Number.isFinite(meetingTime) && time >= meetingTime - EPS) {
+          const exactA = travelDistance(config.aSpeed, config.aDelay, meetingTime);
+          const exactB = travelDistance(config.bSpeed, config.bDelay, meetingTime);
+          return {
+            time: meetingTime,
+            aDistance: exactA,
+            bDistance: exactB,
+            gap: 0,
+            met: true,
+            meetingTime,
+            insight: `兩人於 ${formatTimeDisplay(meetingTime)} 相遇。`
+          };
+        }
+
+        if (!Number.isFinite(meetingTime)) {
+          return {
+            time,
+            aDistance,
+            bDistance,
+            gap: Math.max(0, clampNumber(config.totalLength, 100, 1) - aDistance - bDistance),
+            met: false,
+            meetingTime,
+            insight: "以目前設定，兩人不會相遇。"
+          };
+        }
+
+        const gap = Math.max(0, clampNumber(config.totalLength, 100, 1) - aDistance - bDistance);
+        return {
+          time,
+          aDistance,
+          bDistance,
+          gap,
+          met: false,
+          meetingTime,
+          insight: `兩人尚餘 ${formatDistance(gap)} 才會相遇。`
+        };
+      }
+
+      function getDisplayGeometry(snapshot) {
+        const width = refs.scene.clientWidth || 900;
+        const leftMargin = 72;
+        const rightMargin = 72;
+        const usableWidth = Math.max(240, width - leftMargin - rightMargin);
+
+        let aAnchorX = leftMargin;
+        let bAnchorX = leftMargin;
+        let markerData = {
+          startX: leftMargin,
+          endX: width - rightMargin,
+          centerX: width / 2
+        };
+        let scaleText = "";
+
+        if (state.mode === "same") {
+          const range = Math.max(60, snapshot.aDistance, snapshot.bDistance, 1) * 1.15 + 10;
+          aAnchorX = leftMargin + (snapshot.aDistance / range) * usableWidth;
+          bAnchorX = leftMargin + (snapshot.bDistance / range) * usableWidth;
+          scaleText = `顯示範圍：0 ～ ${roundTo(range, 1).toFixed(1)} m`;
+        } else if (state.mode === "face") {
+          const totalLength = clampNumber(currentConfig().totalLength, 100, 1);
+          aAnchorX = leftMargin + (snapshot.aDistance / totalLength) * usableWidth;
+          bAnchorX = leftMargin + ((totalLength - snapshot.bDistance) / totalLength) * usableWidth;
+          scaleText = `路程總長：${roundTo(totalLength, 1).toFixed(1)} m`;
+        } else {
+          const centerX = width / 2;
+          const halfWidth = Math.max(120, usableWidth / 2);
+          const eachSideRange = Math.max(40, snapshot.aDistance, snapshot.bDistance, 1) * 1.15 + 6;
+          aAnchorX = centerX - (snapshot.aDistance / eachSideRange) * halfWidth;
+          bAnchorX = centerX + (snapshot.bDistance / eachSideRange) * halfWidth;
+          markerData.centerX = centerX;
+          scaleText = `左右各顯示約 ${roundTo(eachSideRange, 1).toFixed(1)} m`;
+        }
+
+        aAnchorX = Math.min(width - rightMargin, Math.max(leftMargin, aAnchorX));
+        bAnchorX = Math.min(width - rightMargin, Math.max(leftMargin, bAnchorX));
+
+        const closeThreshold = 88;
+        let labelShiftA = 0;
+        let labelShiftB = 0;
+
+        if (Math.abs(aAnchorX - bAnchorX) < closeThreshold) {
+          labelShiftA = -30;
+          labelShiftB = 30;
+        }
+
+        return {
+          aAnchorX,
+          bAnchorX,
+          labelShiftA,
+          labelShiftB,
+          markerData,
+          scaleText
+        };
+      }
+
+      function syncInputsFromState() {
+        const config = currentConfig();
+        refs.totalLengthInput.value = roundTo(config.totalLength, 1);
+        refs.aSpeedInput.value = roundTo(config.aSpeed, 1);
+        refs.bSpeedInput.value = roundTo(config.bSpeed, 1);
+        refs.aDelayInput.value = roundTo(config.aDelay, 1);
+        refs.bDelayInput.value = roundTo(config.bDelay, 1);
+        refs.totalLengthField.classList.toggle("hidden", !MODE_INFO[state.mode].totalLengthVisible);
+      }
+
+      function persistInputsToConfig() {
+        const config = cloneConfig(currentConfig());
+        config.totalLength = clampNumber(refs.totalLengthInput.value, config.totalLength, 1);
+        config.aSpeed = clampNumber(refs.aSpeedInput.value, config.aSpeed, 0);
+        config.bSpeed = clampNumber(refs.bSpeedInput.value, config.bSpeed, 0);
+        config.aDelay = clampNumber(refs.aDelayInput.value, config.aDelay, 0);
+        config.bDelay = clampNumber(refs.bDelayInput.value, config.bDelay, 0);
+        state.configs[state.mode] = config;
+      }
+
+      function resetSimulation() {
+        stopFastForward();
+        state.time = 0;
+        state.rows = [];
+        state.met = false;
+        render();
+      }
+
+      function addRowFromTime(nextTime) {
+        const snapshot = getSnapshot(nextTime);
+        state.time = snapshot.time;
+        state.rows.push({
+          time: snapshot.time,
+          aDistance: snapshot.aDistance,
+          bDistance: snapshot.bDistance,
+          gap: snapshot.gap
+        });
+        state.met = snapshot.met;
+      }
+
+      function stepForward() {
+        if (state.autoRunning) return;
+
+        const config = currentConfig();
+
+        if (state.mode === "face") {
+          const meetTime = computeMeetingTime(config);
+          if (state.met || (Number.isFinite(meetTime) && state.time >= meetTime - EPS)) {
+            render();
+            return;
+          }
+
+          let nextTime = state.time + 1;
+          if (Number.isFinite(meetTime) && nextTime >= meetTime - EPS) {
+            nextTime = meetTime;
+          }
+          addRowFromTime(nextTime);
+        } else {
+          addRowFromTime(state.time + 1);
+        }
+
+        render();
+      }
+
+      function startFastForward() {
+        if (state.autoRunning) {
+          stopFastForward();
+          render();
+          return;
+        }
+
+        const config = currentConfig();
+        const meetTime = state.mode === "face" ? computeMeetingTime(config) : Infinity;
+
+        let targetTime;
+        if (state.mode === "face" && Number.isFinite(meetTime)) {
+          targetTime = meetTime;
+        } else {
+          targetTime = state.time + FAST_FORWARD_SECONDS;
+        }
+
+        if (state.mode === "face" && Number.isFinite(meetTime) && state.time >= meetTime - EPS) {
+          render();
+          return;
+        }
+
+        state.autoRunning = true;
+        updateInteractiveState();
+
+        const tick = () => {
+          if (!state.autoRunning) return;
+
+          if (state.mode === "face" && Number.isFinite(meetTime) && state.time >= meetTime - EPS) {
+            stopFastForward();
+            render();
+            return;
+          }
+
+          if (state.time >= targetTime - EPS) {
+            stopFastForward();
+            render();
+            return;
+          }
+
+          if (state.mode === "face" && Number.isFinite(meetTime)) {
+            const nextTime = Math.min(state.time + 1, meetTime);
+            addRowFromTime(nextTime);
+          } else {
+            addRowFromTime(state.time + 1);
+          }
+
+          render();
+
+          if (state.mode === "face" && state.met) {
+            stopFastForward();
+            render();
+            return;
+          }
+
+          if (state.time >= targetTime - EPS) {
+            stopFastForward();
+            render();
+            return;
+          }
+
+          state.timerId = window.setTimeout(tick, FAST_FORWARD_DELAY_MS);
+        };
+
+        tick();
+      }
+
+      function stopFastForward() {
+        state.autoRunning = false;
+        if (state.timerId) {
+          window.clearTimeout(state.timerId);
+          state.timerId = null;
+        }
+        updateInteractiveState();
+      }
+
+      function updateInteractiveState() {
+        refs.stepBtn.disabled = state.autoRunning;
+        refs.fastBtn.textContent = state.autoRunning ? "⏸️ 停止快進" : "🚀 快速前進";
+        refs.modeButtons.forEach((button) => {
+          button.disabled = state.autoRunning;
+        });
+
+        [refs.totalLengthInput, refs.aSpeedInput, refs.bSpeedInput, refs.aDelayInput, refs.bDelayInput].forEach((input) => {
+          const isTotalLengthHidden = input === refs.totalLengthInput && !MODE_INFO[state.mode].totalLengthVisible;
+          input.disabled = state.autoRunning || isTotalLengthHidden;
+        });
+      }
+
+      function renderStatus(snapshot) {
+        let extra = "";
+
+        if (state.mode === "same") {
+          if (Math.abs(snapshot.gap) < EPS && snapshot.time > EPS) {
+            extra = "兩人此刻位置相同。";
+          } else if (snapshot.aDistance > snapshot.bDistance) {
+            extra = `甲比乙多走了 ${formatDistance(snapshot.gap)}。`;
+          } else if (snapshot.bDistance > snapshot.aDistance) {
+            extra = `乙比甲多走了 ${formatDistance(snapshot.gap)}。`;
+          }
+        } else if (state.mode === "back") {
+          extra = `甲向左、乙向右，兩人距離會隨時間累加。`;
+        } else if (snapshot.met) {
+          extra = `甲共走 ${formatDistance(snapshot.aDistance)}，乙共走 ${formatDistance(snapshot.bDistance)}。`;
+        } else if (!Number.isFinite(snapshot.meetingTime)) {
+          extra = "目前至少有一方無法向對方靠近，因此不會相遇。";
+        } else {
+          extra = `若維持此設定，預計會在 ${formatTimeDisplay(snapshot.meetingTime)} 相遇。`;
+        }
+
+        refs.statusText.innerHTML = `
+          <strong>${MODE_INFO[state.mode].label}</strong><br />
+          ${snapshot.insight}<br />
+          ${extra}
+        `;
+      }
+
+      function renderMarkers(geometry) {
+        const { startX, endX, centerX } = geometry.markerData;
+
+        refs.startLine.style.left = `${startX - 3}px`;
+        refs.endLine.style.left = `${endX - 3}px`;
+        refs.centerLine.style.left = `${centerX - 3}px`;
+
+        refs.startMarker.style.left = `${startX}px`;
+        refs.endMarker.style.left = `${endX}px`;
+        refs.centerMarker.style.left = `${centerX}px`;
+
+        if (state.mode === "same") {
+          refs.startMarker.textContent = "共同起點";
+          refs.endMarker.textContent = "";
+          refs.centerMarker.textContent = "";
+          refs.startLine.classList.remove("is-hidden");
+          refs.startMarker.classList.remove("is-hidden");
+          refs.endLine.classList.add("is-hidden");
+          refs.endMarker.classList.add("is-hidden");
+          refs.centerLine.classList.add("is-hidden");
+          refs.centerMarker.classList.add("is-hidden");
+        } else if (state.mode === "face") {
+          refs.startMarker.textContent = "甲起點";
+          refs.endMarker.textContent = "乙起點";
+          refs.startLine.classList.remove("is-hidden");
+          refs.endLine.classList.remove("is-hidden");
+          refs.startMarker.classList.remove("is-hidden");
+          refs.endMarker.classList.remove("is-hidden");
+          refs.centerLine.classList.add("is-hidden");
+          refs.centerMarker.classList.add("is-hidden");
+        } else {
+          refs.centerMarker.textContent = "共同起點";
+          refs.startLine.classList.add("is-hidden");
+          refs.endLine.classList.add("is-hidden");
+          refs.startMarker.classList.add("is-hidden");
+          refs.endMarker.classList.add("is-hidden");
+          refs.centerLine.classList.remove("is-hidden");
+          refs.centerMarker.classList.remove("is-hidden");
+        }
+      }
+
+      function renderScene(snapshot) {
+        const geometry = getDisplayGeometry(snapshot);
+        refs.scaleChip.textContent = geometry.scaleText;
+        renderMarkers(geometry);
+
+        refs.runnerA.style.left = `${geometry.aAnchorX + RUNNER_CENTER_ADJUST.a}px`;
+        refs.runnerB.style.left = `${geometry.bAnchorX + RUNNER_CENTER_ADJUST.b}px`;
+
+        refs.labelA.textContent = `甲：${formatDistance(snapshot.aDistance)}`;
+        refs.labelB.textContent = `乙：${formatDistance(snapshot.bDistance)}`;
+        refs.labelA.style.transform = `translateX(${geometry.labelShiftA}px)`;
+        refs.labelB.style.transform = `translateX(${geometry.labelShiftB}px)`;
+
+        refs.runnerA.classList.remove("hidden");
+        refs.runnerB.classList.remove("hidden");
+      }
+
+      function renderTable(snapshot) {
+        if (state.rows.length === 0) {
+          refs.recordBody.innerHTML = `
+            <tr>
+              <td class="empty-cell" colspan="4">
+                尚未開始模擬。請按「逐秒前進」或「快速前進」開始記錄。
+              </td>
+            </tr>
+          `;
+          refs.recordFoot.innerHTML = "";
+          refs.recordsMeta.textContent = "尚未開始記錄";
+          return;
+        }
+
+        const rowsHtml = state.rows.map((row) => `
+          <tr>
+            <td>${formatTableTime(row.time)}</td>
+            <td>${roundTo(row.aDistance, 1).toFixed(1)}</td>
+            <td>${roundTo(row.bDistance, 1).toFixed(1)}</td>
+            <td>${roundTo(row.gap, 1).toFixed(1)}</td>
+          </tr>
+        `).join("");
+
+        refs.recordBody.innerHTML = rowsHtml;
+        refs.recordsMeta.textContent = `已記錄 ${state.rows.length} 筆資料`;
+
+        if (state.mode === "face" && snapshot.met) {
+          refs.recordFoot.innerHTML = `
+            <tr>
+              <td colspan="4">
+                ✨ 兩人於 ${formatTimeDisplay(snapshot.meetingTime)} 相遇，
+                甲共走 ${formatDistance(snapshot.aDistance)}，
+                乙共走 ${formatDistance(snapshot.bDistance)}。
+              </td>
+            </tr>
+          `;
+        } else {
+          refs.recordFoot.innerHTML = "";
+        }
+      }
+
+      function render() {
+        const info = MODE_INFO[state.mode];
+        const snapshot = getSnapshot(state.time);
+
+        refs.modeButtons.forEach((button) => {
+          button.classList.toggle("active", button.dataset.mode === state.mode);
+        });
+
+        refs.modeDescription.textContent = info.description;
+        refs.formulaChip.textContent = info.formula;
+        refs.fastNote.textContent = info.quickHint;
+        refs.timeDisplay.textContent = formatTimeDisplay(snapshot.time);
+
+        syncInputsFromState();
+        updateInteractiveState();
+        renderStatus(snapshot);
+        renderScene(snapshot);
+        renderTable(snapshot);
+      }
+
+      function switchMode(nextMode) {
+        if (nextMode === state.mode) return;
+        persistInputsToConfig();
+        stopFastForward();
+        state.mode = nextMode;
+        state.time = 0;
+        state.rows = [];
+        state.met = false;
+        render();
+      }
+
+      function handleConfigChange() {
+        persistInputsToConfig();
+        resetSimulation();
+      }
+
+      refs.modeButtons.forEach((button) => {
+        button.addEventListener("click", () => switchMode(button.dataset.mode));
+      });
+
+      [refs.totalLengthInput, refs.aSpeedInput, refs.bSpeedInput, refs.aDelayInput, refs.bDelayInput].forEach((input) => {
+        input.addEventListener("change", handleConfigChange);
+      });
+
+      refs.stepBtn.addEventListener("click", stepForward);
+      refs.fastBtn.addEventListener("click", startFastForward);
+      refs.resetBtn.addEventListener("click", resetSimulation);
+
+      window.addEventListener("resize", render);
+
+      render();
+    })();
+  </script>
+</body>
+</html>
