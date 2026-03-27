@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>公路車速體驗模擬</title>
+  <style>
+    :root {
+      --panel-bg: rgba(9, 17, 30, 0.76);
+      --panel-border: rgba(255, 255, 255, 0.14);
+      --text: #f2f6fb;
+      --soft: rgba(242, 246, 251, 0.84);
+      --accent: #ffd54a;
+      --accent-2: #7ad7ff;
+      --btn: rgba(255, 255, 255, 0.14);
+      --btn-hover: rgba(255, 255, 255, 0.22);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+      background: #07111c;
+      color: var(--text);
+    }
+
+    #app {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: linear-gradient(to bottom, #7cc8ff 0%, #b9e8ff 44%, #88b67a 45%, #60885b 100%);
+      user-select: none;
+      touch-action: none;
+    }
+
+    canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .hud {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      pointer-events: none;
+    }
+
+    .panel {
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      backdrop-filter: blur(5px);
+      box-shadow: 0 10px 24px rgba(0,0,0,0.22);
+      pointer-events: auto;
+    }
+
+    .titleBox {
+      padding: 10px 14px;
+      max-width: 430px;
+    }
+
+    .titleBox h1 {
+      margin: 0 0 5px;
+      font-size: clamp(18px, 1.75vw, 27px);
+      font-weight: 700;
+      letter-spacing: 0.25px;
+    }
+
+    .titleBox p {
+      margin: 0;
+      color: var(--soft);
+      font-size: clamp(11px, 0.95vw, 14px);
+      line-height: 1.45;
+    }
+
+    .speedBox {
+      padding: 10px 14px 12px;
+      min-width: 150px;
+      text-align: right;
+    }
+
+    .speedLabel {
+      color: var(--soft);
+      font-size: 11px;
+      letter-spacing: 1.1px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .speedValue {
+      font-size: clamp(34px, 4vw, 60px);
+      font-weight: 800;
+      line-height: 1;
+      color: var(--accent);
+      text-shadow: 0 0 18px rgba(255, 213, 74, 0.18);
+    }
+
+    .speedUnit {
+      color: var(--accent-2);
+      font-size: clamp(14px, 1.2vw, 18px);
+      font-weight: 700;
+      margin-top: 4px;
+    }
+
+    .bottomBar {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+      pointer-events: none;
+    }
+
+    .buttonRow,
+    .presetRow {
+      display: flex;
+      gap: 9px;
+      flex-wrap: wrap;
+      justify-content: center;
+      pointer-events: auto;
+    }
+
+    button {
+      appearance: none;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: var(--btn);
+      color: #fff;
+      border-radius: 999px;
+      padding: 11px 17px;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      cursor: pointer;
+      transition: transform 0.08s ease, background 0.12s ease, box-shadow 0.12s ease;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+      min-width: 104px;
+    }
+
+    button:hover { background: var(--btn-hover); }
+    button:active, button.active { transform: translateY(1px) scale(0.985); }
+
+    .gas { background: rgba(58, 192, 110, 0.26); }
+    .gas:hover { background: rgba(58, 192, 110, 0.36); }
+    .brake { background: rgba(238, 75, 75, 0.26); }
+    .brake:hover { background: rgba(238, 75, 75, 0.36); }
+    .reset { background: rgba(91, 120, 255, 0.25); }
+
+    .presetRow button {
+      min-width: 74px;
+      padding: 8px 13px;
+      font-size: 14px;
+      background: rgba(255,255,255,0.13);
+    }
+
+    .legend {
+      padding: 9px 14px;
+      font-size: 12px;
+      color: var(--soft);
+      background: rgba(8, 16, 28, 0.68);
+      border: 1px solid var(--panel-border);
+      border-radius: 999px;
+      pointer-events: auto;
+      text-align: center;
+      backdrop-filter: blur(4px);
+    }
+
+    .hintStrong {
+      color: #ffffff;
+      font-weight: 700;
+    }
+
+    @media (max-width: 860px) {
+      .hud {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .speedBox {
+        align-self: flex-end;
+      }
+
+      .titleBox {
+        max-width: unset;
+      }
+
+      button {
+        min-width: 92px;
+        padding: 10px 15px;
+        font-size: 14px;
+      }
+
+      .legend {
+        border-radius: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <canvas id="scene"></canvas>
+
+    <div class="hud">
+      <div class="panel titleBox">
+        <h1>右軚私家車直路車速體驗</h1>
+        <p>
+          右軚司機視角、完全直路、無其他車輛。讓學生感受
+          <span class="hintStrong">30 / 60 / 100 / 140 / 180 / 220 km/h</span>
+          的視覺速度差異。
+          路旁加入高速公路燈柱（約每 50 米一支）作為速度參考。
+        </p>
+      </div>
+
+      <div class="panel speedBox">
+        <div class="speedLabel">Current Speed</div>
+        <div class="speedValue" id="speedValue">0</div>
+        <div class="speedUnit">km/h</div>
+      </div>
+    </div>
+
+    <div class="bottomBar">
+      <div class="buttonRow">
+        <button class="gas" id="gasBtn">畀油 / 加速</button>
+        <button class="brake" id="brakeBtn">煞車 / Brake</button>
+        <button class="reset" id="resetBtn">回到 0 km/h</button>
+      </div>
+      <div class="presetRow" id="presetRow"></div>
+      <div class="legend">鍵盤：<span class="hintStrong">↑ 或 W</span> 畀油　<span class="hintStrong">↓ / S / Space</span> 煞車　｜　下排數字＝<span class="hintStrong">定速</span></div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('scene');
+    const ctx = canvas.getContext('2d');
+    const speedValueEl = document.getElementById('speedValue');
+    const gasBtn = document.getElementById('gasBtn');
+    const brakeBtn = document.getElementById('brakeBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const presetRow = document.getElementById('presetRow');
+
+    let dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    let w = 0;
+    let h = 0;
+
+    let speed = 0;
+    let throttle = false;
+    let braking = false;
+    let cruiseTarget = null;
+    let activePresetButton = null;
+
+    const MAX_SPEED = 220;
+    const ACCEL = 23;
+    const BRAKE = 120;
+    const DRAG_BASE = 5.2;
+    const DRAG_SPEED = 0.022;
+    const MOTION_BASE = 2.1;
+    const MOTION_SPEED = 1.0;
+    const TREE_DRAW_SCALE = 1.28;
+    const LAMP_SPACING = 50;
+
+    let lastTime = 0;
+    let dashTravel = 0;
+    let shimmer = 0;
+    let vibration = 0;
+
+    const presets = [30, 60, 100, 140, 180, 220];
+    const treePools = [];
+    const postPools = [];
+    const lampPools = [];
+
+    function clamp(v, min, max) {
+      return Math.max(min, Math.min(max, v));
+    }
+
+    function lerp(a, b, t) {
+      return a + (b - a) * t;
+    }
+
+    function resize() {
+      dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      w = window.innerWidth;
+      h = window.innerHeight;
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      buildRoadside();
+    }
+
+    function buildRoadside() {
+      treePools.length = 0;
+      postPools.length = 0;
+      lampPools.length = 0;
+
+      const treesPerSide = Math.max(18, Math.floor(w / 120));
+      for (const side of [-1, 1]) {
+        let z = 18 + Math.random() * 10;
+        for (let i = 0; i < treesPerSide; i++) {
+          const closeBand = Math.random() < 0.34;
+          z += 10 + Math.random() * 18;
+          treePools.push({
+            side,
+            z,
+            offset: closeBand ? 0.92 + Math.random() * 1.20 : 2.05 + Math.random() * 2.70,
+            baseH: closeBand ? 3.55 + Math.random() * 1.95 : 3.10 + Math.random() * 1.55,
+            shape: Math.random() > 0.42 ? 'round' : 'pine',
+            tone: 0.82 + Math.random() * 0.28,
+            lean: (Math.random() - 0.5) * 0.06,
+            speedFactor: closeBand ? 1.04 + Math.random() * 0.05 : 0.98 + Math.random() * 0.04,
+            resetZ: 7.0 + Math.random() * 1.6,
+          });
+        }
+      }
+
+      const postsPerSide = 18;
+      for (const side of [-1, 1]) {
+        let z = 14 + Math.random() * 4;
+        for (let i = 0; i < postsPerSide; i++) {
+          z += 10.4 + Math.random() * 5.3;
+          postPools.push({
+            side,
+            z,
+            offset: 0.43 + Math.random() * 0.12,
+            speedFactor: 1.18,
+          });
+        }
+      }
+
+      const lampsPerSide = 10;
+      const lampStartZ = 34;
+      for (const side of [-1, 1]) {
+        for (let i = 0; i < lampsPerSide; i++) {
+          lampPools.push({
+            side,
+            z: lampStartZ + i * LAMP_SPACING,
+            offset: 1.02 + Math.random() * 0.08,
+            baseH: 8.4 + Math.random() * 0.45,
+            armFactor: 0.30 + Math.random() * 0.03,
+            poleTilt: (Math.random() - 0.5) * 0.012,
+            totalSpan: lampsPerSide * LAMP_SPACING,
+            speedFactor: 1.0,
+          });
+        }
+      }
+    }
+
+    function resetTree(tree) {
+      const closeBand = Math.random() < 0.34;
+      tree.z = 250 + Math.random() * 95;
+      tree.offset = closeBand ? 0.92 + Math.random() * 1.20 : 2.05 + Math.random() * 2.70;
+      tree.baseH = closeBand ? 3.55 + Math.random() * 1.95 : 3.10 + Math.random() * 1.55;
+      tree.shape = Math.random() > 0.42 ? 'round' : 'pine';
+      tree.tone = 0.82 + Math.random() * 0.28;
+      tree.lean = (Math.random() - 0.5) * 0.06;
+      tree.speedFactor = closeBand ? 1.04 + Math.random() * 0.05 : 0.98 + Math.random() * 0.04;
+      tree.resetZ = 7.0 + Math.random() * 1.6;
+    }
+
+    function resetPost(post, extra = 0) {
+      post.z = 240 + extra + Math.random() * 90;
+      post.offset = 0.43 + Math.random() * 0.12;
+      post.speedFactor = 1.18;
+    }
+
+    function recycleLamp(lamp) {
+      lamp.z += lamp.totalSpan;
+      lamp.offset = 1.02 + Math.random() * 0.08;
+      lamp.baseH = 8.4 + Math.random() * 0.45;
+      lamp.armFactor = 0.30 + Math.random() * 0.03;
+      lamp.poleTilt = (Math.random() - 0.5) * 0.012;
+      lamp.speedFactor = 1.0;
+    }
+
+    function update(dt) {
+      if (cruiseTarget !== null && !throttle && !braking) {
+        speed = cruiseTarget;
+      } else {
+        if (throttle) speed += ACCEL * dt;
+        if (braking) speed -= BRAKE * dt;
+        if (!throttle && !braking) speed -= (DRAG_BASE + speed * DRAG_SPEED) * dt;
+      }
+
+      speed = clamp(speed, 0, MAX_SPEED);
+      speedValueEl.textContent = Math.round(speed);
+
+      const speedRatio = speed / MAX_SPEED;
+      const motionScale = MOTION_BASE + speedRatio * MOTION_SPEED;
+      const visualSpeed = speed * motionScale;
+      const move = (visualSpeed / 3.6) * dt;
+      dashTravel = (dashTravel + move) % 12;
+      shimmer += dt * (1.25 + visualSpeed / 24);
+      vibration = Math.pow(speedRatio, 1.22) * 3.1;
+
+      const metrics = sceneMetrics();
+
+      for (const tree of treePools) {
+        tree.z -= move * (tree.speedFactor || 1);
+
+        const projection = projectTree(tree, metrics);
+        const fullyOut = tree.z < 0.9 || objectFullyLeftView(projection.base, projection.size, 0.42, 0.65);
+
+        if (fullyOut) {
+          resetTree(tree);
+        }
+      }
+
+      for (const post of postPools) {
+        post.z -= move * (post.speedFactor || 1.18);
+        const projection = projectPost(post, metrics);
+        const fullyOut = post.z < 0.9 || objectFullyLeftView(projection.base, projection.postH, 0.10, 0.12);
+        if (fullyOut) resetPost(post, post.side > 0 ? 8 : 0);
+      }
+
+      for (const lamp of lampPools) {
+        lamp.z -= move * (lamp.speedFactor || 1.0);
+        const projection = projectLamp(lamp, metrics);
+        const fullyOut = lamp.z < 0.7 || lampFullyOutOfView(projection);
+        if (fullyOut) recycleLamp(lamp);
+      }
+    }
+
+    function sceneMetrics() {
+      const speedRatio = speed / MAX_SPEED;
+      const horizonY = h * (0.425 - speedRatio * 0.008);
+      const windshieldBottomY = h * (0.735 - speedRatio * 0.0025);
+      const sceneBottomY = windshieldBottomY + h * 0.014;
+      const vpX = w * 0.505;
+      const f = Math.min(w * 0.72, h * 1.32);
+      const camY = 2.55;
+      const camX = 2.05;
+      const roadHalf = 3.55;
+      const nearZ = Math.max(8.2, camY * f / (sceneBottomY - horizonY));
+      const farZ = 320;
+      return { horizonY, windshieldBottomY, sceneBottomY, vpX, f, camY, camX, roadHalf, nearZ, farZ };
+    }
+
+    function windshieldPath(metrics) {
+      const wb = metrics.windshieldBottomY;
+      ctx.beginPath();
+      ctx.moveTo(w * 0.19, h * 0.145);
+      ctx.lineTo(w * 0.80, h * 0.145);
+      ctx.lineTo(w * 0.90, wb + h * 0.004);
+      ctx.quadraticCurveTo(w * 0.77, wb - h * 0.034, w * 0.56, wb - h * 0.004);
+      ctx.quadraticCurveTo(w * 0.34, wb + h * 0.015, w * 0.14, wb + h * 0.010);
+      ctx.closePath();
+    }
+
+    function projectGround(x, z, metrics) {
+      if (z <= 0.15) return null;
+      return {
+        x: metrics.vpX + ((x - metrics.camX) * metrics.f) / z,
+        y: metrics.horizonY + (metrics.camY * metrics.f) / z,
+      };
+    }
+
+    function projectTree(tree, metrics) {
+      const drawZ = Math.max(tree.z, 0.18);
+      const roadEdgeX = tree.side * metrics.roadHalf;
+      const worldX = roadEdgeX + tree.side * tree.offset;
+      const base = projectGround(worldX, drawZ, metrics);
+      const size = (tree.baseH * metrics.f / drawZ) * TREE_DRAW_SCALE;
+      return { base, size };
+    }
+
+    function projectPost(post, metrics) {
+      const drawZ = Math.max(post.z, 0.18);
+      const base = projectGround(post.side * (metrics.roadHalf + post.offset), drawZ, metrics);
+      const postH = clamp((metrics.f / drawZ) * 0.52, 6, 220);
+      return { base, postH };
+    }
+
+    function projectLamp(lamp, metrics) {
+      const drawZ = Math.max(lamp.z, 0.18);
+      const base = projectGround(lamp.side * (metrics.roadHalf + lamp.offset), drawZ, metrics);
+      const poleH = clamp((lamp.baseH * metrics.f) / drawZ, 18, 760);
+      const poleW = clamp(poleH * 0.05, 2, 15);
+      const armLen = clamp(poleH * lamp.armFactor, 10, 180);
+      return { base, poleH, poleW, armLen };
+    }
+
+    function objectFullyLeftView(base, size, xRatio = 0.16, yRatio = 0.18) {
+      if (!base) return true;
+      const marginX = Math.max(110, size * xRatio);
+      const marginY = Math.max(120, size * yRatio);
+      return base.x < -marginX || base.x > w + marginX || base.y > h + marginY;
+    }
+
+    function lampFullyOutOfView(projection) {
+      if (!projection.base) return true;
+      const { base, poleH, poleW, armLen } = projection;
+      const marginX = Math.max(90, armLen + poleW * 2 + 30);
+      return base.x < -marginX || base.x > w + marginX || base.y > h + poleH * 0.85;
+    }
+
+    function drawSkyAndGround(metrics) {
+      const { horizonY, sceneBottomY } = metrics;
+
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, horizonY + h * 0.18);
+      skyGrad.addColorStop(0, '#78c7ff');
+      skyGrad.addColorStop(0.55, '#b8e7ff');
+      skyGrad.addColorStop(1, '#f1fbff');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, w, horizonY + h * 0.16);
+
+      const fieldGrad = ctx.createLinearGradient(0, horizonY, 0, sceneBottomY + h * 0.12);
+      fieldGrad.addColorStop(0, '#88b778');
+      fieldGrad.addColorStop(0.55, '#75a865');
+      fieldGrad.addColorStop(1, '#608a57');
+      ctx.fillStyle = fieldGrad;
+      ctx.fillRect(0, horizonY - 2, w, h - horizonY + 10);
+
+      ctx.fillStyle = '#5b8c52';
+      ctx.beginPath();
+      ctx.moveTo(0, horizonY + 8);
+      for (let x = 0; x <= w + 40; x += 42) {
+        const y = horizonY + 10 + Math.sin(x * 0.012 + shimmer * 0.045) * 5 + Math.sin(x * 0.026) * 3.5;
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(w, horizonY + 55);
+      ctx.lineTo(0, horizonY + 55);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = 'rgba(38, 83, 40, 0.30)';
+      ctx.beginPath();
+      ctx.moveTo(0, horizonY + 22);
+      for (let x = 0; x <= w + 60; x += 60) {
+        const y = horizonY + 25 + Math.sin(x * 0.007 + 1.4) * 9 + Math.sin(x * 0.021 + shimmer * 0.02) * 4;
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(w, horizonY + 70);
+      ctx.lineTo(0, horizonY + 70);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function fillQuad(a, b, c, d) {
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.lineTo(c.x, c.y);
+      ctx.lineTo(d.x, d.y);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawRoad(metrics) {
+      const { roadHalf, farZ, nearZ, horizonY, sceneBottomY } = metrics;
+      const shoulderW = 0.74;
+      const leftFar = projectGround(-roadHalf, farZ, metrics);
+      const rightFar = projectGround(roadHalf, farZ, metrics);
+      const leftNear = projectGround(-roadHalf, nearZ, metrics);
+      const rightNear = projectGround(roadHalf, nearZ, metrics);
+      const leftShoulderFar = projectGround(-roadHalf - shoulderW, farZ, metrics);
+      const leftShoulderNear = projectGround(-roadHalf - shoulderW, nearZ, metrics);
+      const rightShoulderFar = projectGround(roadHalf + shoulderW, farZ, metrics);
+      const rightShoulderNear = projectGround(roadHalf + shoulderW, nearZ, metrics);
+
+      const shoulderGrad = ctx.createLinearGradient(0, horizonY, 0, sceneBottomY + 20);
+      shoulderGrad.addColorStop(0, '#c9a565');
+      shoulderGrad.addColorStop(1, '#90673c');
+      ctx.fillStyle = shoulderGrad;
+      fillQuad(leftShoulderFar, leftFar, leftNear, leftShoulderNear);
+      fillQuad(rightFar, rightShoulderFar, rightShoulderNear, rightNear);
+
+      const roadGrad = ctx.createLinearGradient(0, horizonY, 0, sceneBottomY + 25);
+      roadGrad.addColorStop(0, '#748087');
+      roadGrad.addColorStop(0.22, '#616b72');
+      roadGrad.addColorStop(1, '#353c42');
+      ctx.fillStyle = roadGrad;
+      fillQuad(leftFar, rightFar, rightNear, leftNear);
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.96)';
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.moveTo(leftFar.x, leftFar.y);
+      ctx.lineTo(leftNear.x, leftNear.y);
+      ctx.moveTo(rightFar.x, rightFar.y);
+      ctx.lineTo(rightNear.x, rightNear.y);
+      ctx.stroke();
+
+      const dashSpacing = 11.2;
+      const dashLength = 4.4;
+      const lineHalfW = 0.11;
+      const dashStart = 14 - (dashTravel % dashSpacing);
+      ctx.fillStyle = 'rgba(255,255,255,0.97)';
+      for (let z = dashStart; z < farZ; z += dashSpacing) {
+        const z1 = Math.max(z, 10);
+        const z2 = z1 + dashLength;
+        if (z2 <= 9.5) continue;
+        const a = projectGround(-lineHalfW, z2, metrics);
+        const b = projectGround(lineHalfW, z2, metrics);
+        const c = projectGround(lineHalfW, z1, metrics);
+        const d = projectGround(-lineHalfW, z1, metrics);
+        fillQuad(a, b, c, d);
+      }
+
+      if (speed > 60) {
+        const streakCount = Math.floor((speed - 42) / 6);
+        ctx.strokeStyle = 'rgba(255,255,255,0.075)';
+        ctx.lineWidth = 2.1;
+        for (let i = 0; i < streakCount; i++) {
+          const xL = lerp(leftNear.x - 22, leftShoulderNear.x - 60, (i % 5) / 4);
+          const xR = lerp(rightNear.x + 22, rightShoulderNear.x + 60, (i % 5) / 4);
+          const y1 = horizonY + 52 + ((i * 61 + shimmer * 110) % Math.max(80, sceneBottomY - horizonY - 25));
+          const len = 16 + speed * 0.26;
+          ctx.beginPath();
+          ctx.moveTo(xL, y1);
+          ctx.lineTo(xL, y1 + len);
+          ctx.moveTo(xR, y1);
+          ctx.lineTo(xR, y1 + len);
+          ctx.stroke();
+        }
+      }
+    }
+
+    function drawTreeShape(x, y, size, shape, tone, lean) {
+      const green1 = 48 + Math.floor(44 * tone);
+      const green2 = 112 + Math.floor(38 * tone);
+      const green3 = 34 + Math.floor(30 * tone);
+      const trunkH = size * 0.34;
+      const trunkW = Math.max(2, size * 0.12);
+
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(lean);
+
+      ctx.fillStyle = '#6c4421';
+      ctx.fillRect(-trunkW / 2, -trunkH, trunkW, trunkH);
+
+      if (shape === 'round') {
+        ctx.fillStyle = `rgb(${green3}, ${green2}, ${42})`;
+        ctx.beginPath();
+        ctx.arc(0, -trunkH - size * 0.18, size * 0.36, 0, Math.PI * 2);
+        ctx.arc(-size * 0.18, -trunkH - size * 0.03, size * 0.26, 0, Math.PI * 2);
+        ctx.arc(size * 0.18, -trunkH - size * 0.03, size * 0.26, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.fillStyle = `rgb(${28}, ${green1}, ${36})`;
+        for (let i = 0; i < 3; i++) {
+          const top = -trunkH - size * (0.16 + i * 0.17);
+          const width = size * (0.58 - i * 0.10);
+          ctx.beginPath();
+          ctx.moveTo(0, top - size * 0.21);
+          ctx.lineTo(-width / 2, top + size * 0.03);
+          ctx.lineTo(width / 2, top + size * 0.03);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    }
+
+    function drawTrees(metrics) {
+      const sortedTrees = [...treePools].sort((a, b) => b.z - a.z);
+      for (const tree of sortedTrees) {
+        if (tree.z < 0.9 || tree.z > 380) continue;
+        const projection = projectTree(tree, metrics);
+        const base = projection.base;
+        const size = projection.size;
+        if (!base || size < 7) continue;
+        if (objectFullyLeftView(base, size, 0.42, 0.65)) continue;
+        drawTreeShape(base.x, base.y + 1, clamp(size, 10, 2400), tree.shape, tree.tone, tree.lean);
+      }
+    }
+
+    function drawPosts(metrics) {
+      const sortedPosts = [...postPools].sort((a, b) => b.z - a.z);
+      for (const post of sortedPosts) {
+        if (post.z < 0.9 || post.z > 360) continue;
+        const projection = projectPost(post, metrics);
+        const base = projection.base;
+        const postH = projection.postH;
+        if (!base || objectFullyLeftView(base, postH, 0.10, 0.12)) continue;
+        const postW = clamp(postH * 0.13, 1.6, 7.5);
+        ctx.fillStyle = 'rgba(255,255,255,0.92)';
+        ctx.fillRect(base.x - postW / 2, base.y - postH, postW, postH);
+        ctx.fillStyle = 'rgba(255,84,84,0.76)';
+        ctx.fillRect(base.x - postW / 2, base.y - postH, postW, postH * 0.28);
+      }
+    }
+
+    function drawLamps(metrics) {
+      const sortedLamps = [...lampPools].sort((a, b) => b.z - a.z);
+      for (const lamp of sortedLamps) {
+        if (lamp.z < 0.7 || lamp.z > 640) continue;
+        const projection = projectLamp(lamp, metrics);
+        const { base, poleH, poleW, armLen } = projection;
+        if (!base || lampFullyOutOfView(projection)) continue;
+
+        const topY = base.y - poleH;
+        const headX = base.x + (lamp.side > 0 ? -armLen : armLen);
+        const headY = topY + poleW * 0.65;
+
+        ctx.save();
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = 'rgba(128, 136, 145, 0.96)';
+        ctx.lineWidth = poleW;
+        ctx.beginPath();
+        ctx.moveTo(base.x, base.y);
+        ctx.lineTo(base.x + lamp.poleTilt * poleH, topY);
+        ctx.stroke();
+
+        ctx.strokeStyle = 'rgba(152, 160, 170, 0.96)';
+        ctx.lineWidth = Math.max(2, poleW * 0.66);
+        ctx.beginPath();
+        ctx.moveTo(base.x + lamp.poleTilt * poleH, topY + poleW * 0.08);
+        ctx.quadraticCurveTo(
+          base.x + (lamp.side > 0 ? -armLen * 0.55 : armLen * 0.55),
+          topY - poleH * 0.03,
+          headX,
+          headY
+        );
+        ctx.stroke();
+
+        const headW = clamp(poleW * 1.6, 4, 24);
+        const headH = clamp(poleW * 0.7, 2, 12);
+        ctx.fillStyle = 'rgba(195, 201, 208, 0.98)';
+        ctx.fillRect(headX - headW / 2, headY - headH / 2, headW, headH);
+
+        if (speed > 0) {
+          ctx.fillStyle = 'rgba(255, 238, 170, 0.34)';
+          ctx.beginPath();
+          ctx.ellipse(headX, headY + headH * 0.28, headW * 0.32, headH * 0.52, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+    }
+
+    function drawHood(metrics) {
+      const wb = metrics.windshieldBottomY;
+      const hoodTop = wb - h * 0.01;
+      const hoodGrad = ctx.createLinearGradient(0, hoodTop, 0, hoodTop + h * 0.12);
+      hoodGrad.addColorStop(0, '#88939a');
+      hoodGrad.addColorStop(0.5, '#626c73');
+      hoodGrad.addColorStop(1, '#394148');
+      ctx.fillStyle = hoodGrad;
+      ctx.beginPath();
+      ctx.moveTo(w * 0.12, wb + h * 0.006);
+      ctx.quadraticCurveTo(w * 0.30, hoodTop - h * 0.01, w * 0.50, hoodTop + h * 0.004);
+      ctx.quadraticCurveTo(w * 0.70, hoodTop + h * 0.02, w * 0.89, wb + h * 0.002);
+      ctx.lineTo(w * 0.91, wb + h * 0.05);
+      ctx.lineTo(w * 0.09, wb + h * 0.055);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(w * 0.19, hoodTop + h * 0.022);
+      ctx.quadraticCurveTo(w * 0.38, hoodTop, w * 0.56, hoodTop + h * 0.012);
+      ctx.quadraticCurveTo(w * 0.71, hoodTop + h * 0.023, w * 0.84, hoodTop + h * 0.026);
+      ctx.stroke();
+    }
+
+    function drawExterior(metrics) {
+      ctx.save();
+      windshieldPath(metrics);
+      ctx.clip();
+      drawSkyAndGround(metrics);
+      const tintGrad = ctx.createLinearGradient(0, h * 0.14, 0, h * 0.30);
+      tintGrad.addColorStop(0, 'rgba(18, 40, 70, 0.22)');
+      tintGrad.addColorStop(1, 'rgba(18, 40, 70, 0)');
+      ctx.fillStyle = tintGrad;
+      ctx.fillRect(0, h * 0.14, w, h * 0.16);
+      drawRoad(metrics);
+      drawTrees(metrics);
+      drawPosts(metrics);
+      drawLamps(metrics);
+      drawHood(metrics);
+      ctx.restore();
+    }
+
+    function drawCockpit(metrics) {
+      const shakeX = Math.sin(shimmer * 7.1) * vibration * 0.3;
+      const shakeY = Math.cos(shimmer * 7.8) * vibration * 0.16;
+      const wb = metrics.windshieldBottomY;
+
+      ctx.save();
+      ctx.translate(shakeX, shakeY);
+
+      const roofGrad = ctx.createLinearGradient(0, 0, 0, h * 0.13);
+      roofGrad.addColorStop(0, '#18222d');
+      roofGrad.addColorStop(1, '#0a1017');
+      ctx.fillStyle = roofGrad;
+      ctx.fillRect(0, 0, w, h * 0.145);
+
+      ctx.fillStyle = '#16212c';
+      ctx.beginPath();
+      ctx.moveTo(w * 0.16, h * 0.07);
+      ctx.lineTo(w * 0.34, h * 0.07);
+      ctx.lineTo(w * 0.304, h * 0.11);
+      ctx.lineTo(w * 0.132, h * 0.11);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(w * 0.68, h * 0.07);
+      ctx.lineTo(w * 0.86, h * 0.07);
+      ctx.lineTo(w * 0.888, h * 0.11);
+      ctx.lineTo(w * 0.708, h * 0.11);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#0d151e';
+      ctx.fillRect(w * 0.447, h * 0.07, w * 0.106, h * 0.03);
+      ctx.fillStyle = 'rgba(255,255,255,0.17)';
+      ctx.fillRect(w * 0.459, h * 0.078, w * 0.081, h * 0.0095);
+      ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+      ctx.lineWidth = 3.6;
+      ctx.strokeRect(w * 0.447, h * 0.07, w * 0.106, h * 0.03);
+
+      ctx.fillStyle = '#0d1620';
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(w * 0.105, 0);
+      ctx.lineTo(w * 0.186, h * 0.145);
+      ctx.lineTo(w * 0.118, wb + h * 0.028);
+      ctx.lineTo(w * 0.038, h);
+      ctx.lineTo(0, h);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(w, 0);
+      ctx.lineTo(w * 0.895, 0);
+      ctx.lineTo(w * 0.814, h * 0.145);
+      ctx.lineTo(w * 0.912, wb + h * 0.028);
+      ctx.lineTo(w, h);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.moveTo(w * 0.186, h * 0.145);
+      ctx.lineTo(w * 0.118, wb + h * 0.028);
+      ctx.moveTo(w * 0.814, h * 0.145);
+      ctx.lineTo(w * 0.912, wb + h * 0.028);
+      ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+      ctx.lineWidth = 2.4;
+      windshieldPath(metrics);
+      ctx.stroke();
+
+      const dashTop = wb + h * 0.012;
+      const dashGrad = ctx.createLinearGradient(0, dashTop, 0, h);
+      dashGrad.addColorStop(0, '#2e353c');
+      dashGrad.addColorStop(0.18, '#171d24');
+      dashGrad.addColorStop(1, '#03070c');
+      ctx.fillStyle = dashGrad;
+      ctx.beginPath();
+      ctx.moveTo(0, h);
+      ctx.lineTo(0, dashTop + h * 0.055);
+      ctx.bezierCurveTo(w * 0.15, dashTop + h * 0.006, w * 0.33, dashTop + h * 0.01, w * 0.49, dashTop + h * 0.027);
+      ctx.bezierCurveTo(w * 0.66, dashTop + h * 0.047, w * 0.84, dashTop + h * 0.018, w, dashTop + h * 0.044);
+      ctx.lineTo(w, h);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(w * 0.10, dashTop + h * 0.04);
+      ctx.quadraticCurveTo(w * 0.28, dashTop + h * 0.005, w * 0.47, dashTop + h * 0.026);
+      ctx.quadraticCurveTo(w * 0.64, dashTop + h * 0.046, w * 0.90, dashTop + h * 0.022);
+      ctx.stroke();
+
+      const clusterX = w * 0.73;
+      const clusterY = h * 0.81;
+      const clusterW = w * 0.145;
+      const clusterH = h * 0.10;
+      ctx.fillStyle = '#0f1720';
+      ctx.beginPath();
+      ctx.moveTo(clusterX - clusterW * 0.54, clusterY + clusterH * 0.48);
+      ctx.lineTo(clusterX - clusterW * 0.42, clusterY - clusterH * 0.20);
+      ctx.quadraticCurveTo(clusterX, clusterY - clusterH * 0.54, clusterX + clusterW * 0.46, clusterY - clusterH * 0.12);
+      ctx.lineTo(clusterX + clusterW * 0.50, clusterY + clusterH * 0.44);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#09111a';
+      ctx.beginPath();
+      ctx.moveTo(clusterX - clusterW * 0.41, clusterY + clusterH * 0.30);
+      ctx.lineTo(clusterX - clusterW * 0.32, clusterY - clusterH * 0.10);
+      ctx.quadraticCurveTo(clusterX, clusterY - clusterH * 0.36, clusterX + clusterW * 0.34, clusterY - clusterH * 0.04);
+      ctx.lineTo(clusterX + clusterW * 0.38, clusterY + clusterH * 0.28);
+      ctx.closePath();
+      ctx.fill();
+
+      const dialR = Math.min(w, h) * 0.039;
+      drawDial(clusterX - dialR * 1.00, clusterY + dialR * 0.06, dialR, speed, MAX_SPEED, 'km/h');
+      drawDial(clusterX + dialR * 0.78, clusterY + dialR * 0.06, dialR * 0.82, Math.min(speed * 35, 8000), 8000, 'rpm');
+
+      const wheelX = w * 0.79;
+      const wheelY = h * 0.862;
+      const wheelR = Math.min(w, h) * 0.086;
+      ctx.strokeStyle = '#16212d';
+      ctx.lineWidth = Math.max(11, wheelR * 0.17);
+      ctx.beginPath();
+      ctx.arc(wheelX, wheelY, wheelR, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#2b3640';
+      ctx.lineWidth = Math.max(3, wheelR * 0.04);
+      ctx.beginPath();
+      ctx.arc(wheelX, wheelY, wheelR * 0.68, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#27313a';
+      ctx.lineWidth = Math.max(6, wheelR * 0.07);
+      for (const angle of [-Math.PI / 2, Math.PI * 0.15, Math.PI * 0.80]) {
+        ctx.beginPath();
+        ctx.moveTo(wheelX, wheelY);
+        ctx.lineTo(wheelX + Math.cos(angle) * wheelR * 0.72, wheelY + Math.sin(angle) * wheelR * 0.72);
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = '#09111a';
+      ctx.beginPath();
+      ctx.arc(wheelX, wheelY, wheelR * 0.17, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#111923';
+      ctx.fillRect(w * 0.767, h * 0.866, w * 0.046, h * 0.07);
+
+      const consoleX = w * 0.49;
+      const consoleY = h * 0.845;
+      const consoleW = w * 0.085;
+      const consoleH = h * 0.055;
+      ctx.fillStyle = '#121922';
+      roundRect(consoleX - consoleW / 2, consoleY - consoleH / 2, consoleW, consoleH, 12, true);
+      ctx.fillStyle = 'rgba(122, 215, 255, 0.17)';
+      roundRect(consoleX - consoleW * 0.34, consoleY - consoleH * 0.28, consoleW * 0.68, consoleH * 0.42, 7, true);
+
+      ctx.fillStyle = '#0f1721';
+      roundRect(w * 0.17, h * 0.80, w * 0.09, h * 0.09, 18, true);
+      ctx.fillStyle = 'rgba(255,255,255,0.05)';
+      roundRect(w * 0.181, h * 0.812, w * 0.065, h * 0.028, 8, true);
+
+      ctx.restore();
+    }
+
+    function roundRect(x, y, width, height, radius, fill = false, stroke = false) {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+      if (fill) ctx.fill();
+      if (stroke) ctx.stroke();
+    }
+
+    function drawDial(x, y, r, value, maxValue, unit) {
+      ctx.fillStyle = '#101720';
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+      ctx.lineWidth = 2.2;
+      ctx.stroke();
+
+      for (let i = 0; i <= 10; i++) {
+        const t = i / 10;
+        const ang = (-Math.PI * 0.76) + t * Math.PI * 1.52;
+        const x1 = x + Math.cos(ang) * r * 0.72;
+        const y1 = y + Math.sin(ang) * r * 0.72;
+        const x2 = x + Math.cos(ang) * r * 0.88;
+        const y2 = y + Math.sin(ang) * r * 0.88;
+        ctx.strokeStyle = 'rgba(255,255,255,0.17)';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      }
+
+      const angle = (-Math.PI * 0.76) + (clamp(value / maxValue, 0, 1)) * Math.PI * 1.52;
+      ctx.strokeStyle = '#ffd54a';
+      ctx.lineWidth = Math.max(2.3, r * 0.055);
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + Math.cos(angle) * r * 0.78, y + Math.sin(angle) * r * 0.78);
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffd54a';
+      ctx.beginPath();
+      ctx.arc(x, y, r * 0.08, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#eef5ff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = `bold ${Math.max(11, r * 0.34)}px Segoe UI, sans-serif`;
+      ctx.fillText(Math.round(value), x, y - r * 0.01);
+      ctx.fillStyle = '#7ad7ff';
+      ctx.font = `bold ${Math.max(8, r * 0.15)}px Segoe UI, sans-serif`;
+      ctx.fillText(unit, x, y + r * 0.30);
+    }
+
+    function render() {
+      ctx.clearRect(0, 0, w, h);
+      const metrics = sceneMetrics();
+      drawExterior(metrics);
+      drawCockpit(metrics);
+    }
+
+    function loop(ts) {
+      if (!lastTime) lastTime = ts;
+      const dt = Math.min(0.033, (ts - lastTime) / 1000);
+      lastTime = ts;
+      update(dt);
+      render();
+      requestAnimationFrame(loop);
+    }
+
+    function setActivePreset(button) {
+      if (activePresetButton) activePresetButton.classList.remove('active');
+      activePresetButton = button || null;
+      if (activePresetButton) activePresetButton.classList.add('active');
+    }
+
+    function clearCruise() {
+      cruiseTarget = null;
+      setActivePreset(null);
+    }
+
+    function setCruise(target, button) {
+      cruiseTarget = clamp(target, 0, MAX_SPEED);
+      speed = cruiseTarget;
+      setActivePreset(button);
+    }
+
+    function setHoldButton(button, setter) {
+      const press = (e) => {
+        e.preventDefault();
+        clearCruise();
+        setter(true);
+        button.classList.add('active');
+      };
+      const release = (e) => {
+        e.preventDefault();
+        setter(false);
+        button.classList.remove('active');
+      };
+      button.addEventListener('pointerdown', press);
+      button.addEventListener('pointerup', release);
+      button.addEventListener('pointerleave', release);
+      button.addEventListener('pointercancel', release);
+      button.addEventListener('lostpointercapture', release);
+    }
+
+    setHoldButton(gasBtn, (v) => { throttle = v; });
+    setHoldButton(brakeBtn, (v) => { braking = v; });
+
+    resetBtn.addEventListener('click', () => {
+      clearCruise();
+      speed = 0;
+    });
+
+    for (const preset of presets) {
+      const btn = document.createElement('button');
+      btn.textContent = preset + ' km/h';
+      btn.addEventListener('click', () => {
+        setCruise(preset, btn);
+      });
+      presetRow.appendChild(btn);
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (['ArrowUp', 'w', 'W'].includes(e.key)) {
+        if (!throttle) clearCruise();
+        throttle = true;
+        gasBtn.classList.add('active');
+        e.preventDefault();
+      }
+      if (['ArrowDown', 's', 'S', ' '].includes(e.key)) {
+        if (!braking) clearCruise();
+        braking = true;
+        brakeBtn.classList.add('active');
+        e.preventDefault();
+      }
+    }, { passive: false });
+
+    window.addEventListener('keyup', (e) => {
+      if (['ArrowUp', 'w', 'W'].includes(e.key)) {
+        throttle = false;
+        gasBtn.classList.remove('active');
+      }
+      if (['ArrowDown', 's', 'S', ' '].includes(e.key)) {
+        braking = false;
+        brakeBtn.classList.remove('active');
+      }
+    });
+
+    window.addEventListener('blur', () => {
+      throttle = false;
+      braking = false;
+      gasBtn.classList.remove('active');
+      brakeBtn.classList.remove('active');
+    });
+
+    window.addEventListener('resize', resize);
+
+    resize();
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
