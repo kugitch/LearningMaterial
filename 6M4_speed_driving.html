@@ -2,9 +2,8 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>公路車速體驗模擬</title>
+  <title>交通工具速度體驗模擬</title>
   <style>
     :root {
       --panel-bg: rgba(9, 17, 30, 0.76);
@@ -87,6 +86,14 @@
       line-height: 1.45;
     }
 
+    .titleMeta {
+      margin-top: 8px;
+      color: var(--accent-2);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+
     .speedBox {
       padding: 10px 14px 12px;
       min-width: 150px;
@@ -116,6 +123,13 @@
       margin-top: 4px;
     }
 
+    .speedSub {
+      color: var(--soft);
+      font-size: 12px;
+      margin-top: 7px;
+      line-height: 1.35;
+    }
+
     .bottomBar {
       position: absolute;
       left: 12px;
@@ -129,6 +143,7 @@
     }
 
     .buttonRow,
+    .modeRow,
     .presetRow {
       display: flex;
       gap: 9px;
@@ -161,6 +176,18 @@
     .brake { background: rgba(238, 75, 75, 0.26); }
     .brake:hover { background: rgba(238, 75, 75, 0.36); }
     .reset { background: rgba(91, 120, 255, 0.25); }
+
+    .modeRow button {
+      min-width: 88px;
+      padding: 8px 14px;
+      font-size: 14px;
+      background: rgba(122, 215, 255, 0.12);
+    }
+
+    .modeRow button.active {
+      background: rgba(122, 215, 255, 0.28);
+      box-shadow: 0 0 0 1px rgba(122, 215, 255, 0.22) inset, 0 8px 16px rgba(0,0,0,0.18);
+    }
 
     .presetRow button {
       min-width: 74px;
@@ -218,17 +245,21 @@
 
     <div class="hud">
       <div class="panel titleBox">
-        <h1>直路車速體驗</h1>
+        <h1>交通工具速度體驗模擬</h1>
         <p>
-          <span class="hintStrong">30 / 60 / 100 / 140 / 180 / 220 km/h</span>
-          路旁加入高速公路燈柱（約每 50 米一支）作為速度參考。
+          以前方固定視角、同一直路、同一批路邊樹與燈柱作參考，
+          比較不同交通工具速度的視覺差異。
+          同一個 km/h 會用同一套畫面速度邏輯，不會因交通工具不同而變慢或變快。
+          路旁高速公路燈柱維持約每 50 米一支，方便學生感受速度節奏。
         </p>
+        <div class="titleMeta" id="titleMeta">目前：私家車｜上限 220 km/h</div>
       </div>
 
       <div class="panel speedBox">
         <div class="speedLabel">Current Speed</div>
         <div class="speedValue" id="speedValue">0</div>
         <div class="speedUnit">km/h</div>
+        <div class="speedSub" id="modeMini">私家車 · 上限 220 km/h</div>
       </div>
     </div>
 
@@ -238,8 +269,9 @@
         <button class="brake" id="brakeBtn">煞車 / Brake</button>
         <button class="reset" id="resetBtn">回到 0 km/h</button>
       </div>
+      <div class="modeRow" id="modeRow"></div>
       <div class="presetRow" id="presetRow"></div>
-      <div class="legend">鍵盤：<span class="hintStrong">↑ 或 W</span> 畀油　<span class="hintStrong">↓ / S / Space</span> 煞車　｜　下排數字＝<span class="hintStrong">定速</span></div>
+      <div class="legend">上排：<span class="hintStrong">選交通工具</span>　｜　下排數字：<span class="hintStrong">定速</span>　｜　鍵盤：<span class="hintStrong">↑ 或 W</span> 畀油　<span class="hintStrong">↓ / S / Space</span> 煞車</div>
     </div>
   </div>
 
@@ -251,6 +283,9 @@
     const brakeBtn = document.getElementById('brakeBtn');
     const resetBtn = document.getElementById('resetBtn');
     const presetRow = document.getElementById('presetRow');
+    const modeRow = document.getElementById('modeRow');
+    const titleMetaEl = document.getElementById('titleMeta');
+    const modeMiniEl = document.getElementById('modeMini');
 
     let dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
     let w = 0;
@@ -261,23 +296,93 @@
     let braking = false;
     let cruiseTarget = null;
     let activePresetButton = null;
+    let activeModeButton = null;
 
-    const MAX_SPEED = 220;
-    const ACCEL = 23;
-    const BRAKE = 120;
-    const DRAG_BASE = 5.2;
-    const DRAG_SPEED = 0.022;
-    const MOTION_BASE = 2.1;
-    const MOTION_SPEED = 1.0;
     const TREE_DRAW_SCALE = 1.28;
     const LAMP_SPACING = 50;
+
+    const vehicles = [
+      {
+        id: 'bus',
+        label: '巴士',
+        maxSpeed: 70,
+        presets: [20, 40, 60, 70],
+        accel: 6,
+        brake: 35,
+        dragBase: 4.7,
+        dragSpeed: 0.030,
+        motionBase: 2.25,
+        motionGain: 0.90,
+      },
+      {
+        id: 'mtr',
+        label: '港鐵',
+        maxSpeed: 120,
+        presets: [30, 60, 90, 120],
+        accel: 10,
+        brake: 55,
+        dragBase: 4.9,
+        dragSpeed: 0.026,
+        motionBase: 2.20,
+        motionGain: 0.92,
+      },
+      {
+        id: 'car',
+        label: '私家車',
+        maxSpeed: 220,
+        presets: [30, 60, 100, 140, 180, 220],
+        accel: 23,
+        brake: 120,
+        dragBase: 5.2,
+        dragSpeed: 0.022,
+        motionBase: 2.10,
+        motionGain: 1.00,
+      },
+      {
+        id: 'hsr',
+        label: '高鐵',
+        maxSpeed: 453,
+        presets: [80, 160, 240, 320, 400, 453],
+        accel: 38,
+        brake: 180,
+        dragBase: 6.0,
+        dragSpeed: 0.017,
+        motionBase: 1.72,
+        motionGain: 0.73,
+      },
+      {
+        id: 'plane',
+        label: '飛機',
+        maxSpeed: 1000,
+        presets: [200, 400, 600, 800, 1000],
+        accel: 80,
+        brake: 280,
+        dragBase: 7.4,
+        dragSpeed: 0.011,
+        motionBase: 1.10,
+        motionGain: 0.50,
+      },
+      {
+        id: 'fighter',
+        label: '戰機',
+        maxSpeed: 2500,
+        presets: [500, 1000, 1500, 2000, 2500],
+        accel: 160,
+        brake: 420,
+        dragBase: 8.1,
+        dragSpeed: 0.0085,
+        motionBase: 0.55,
+        motionGain: 0.28,
+      },
+    ];
+
+    let currentVehicle = vehicles.find(v => v.id === 'car');
 
     let lastTime = 0;
     let dashTravel = 0;
     let shimmer = 0;
     let vibration = 0;
 
-    const presets = [30, 60, 100, 140, 180, 220];
     const treePools = [];
     const postPools = [];
     const lampPools = [];
@@ -288,6 +393,30 @@
 
     function lerp(a, b, t) {
       return a + (b - a) * t;
+    }
+
+    function speedToVisualKmh(kmh) {
+      if (kmh <= 220) {
+        return kmh * (2.1 + (kmh / 220) * 1.0);
+      }
+
+      const car220Visual = 220 * 3.1;
+      if (kmh <= 1000) {
+        return car220Visual + (kmh - 220) * 1.65;
+      }
+
+      const upTo1000 = car220Visual + (1000 - 220) * 1.65;
+      return upTo1000 + (kmh - 1000) * 1.28;
+    }
+
+    function speedToFeelRatio(kmh) {
+      if (kmh <= 220) {
+        return clamp(kmh / 220, 0, 1);
+      }
+      if (kmh <= 1000) {
+        return 1 + clamp((kmh - 220) / 780, 0, 1) * 0.42;
+      }
+      return 1.42 + clamp((kmh - 1000) / 1500, 0, 1) * 0.46;
     }
 
     function resize() {
@@ -390,21 +519,20 @@
       if (cruiseTarget !== null && !throttle && !braking) {
         speed = cruiseTarget;
       } else {
-        if (throttle) speed += ACCEL * dt;
-        if (braking) speed -= BRAKE * dt;
-        if (!throttle && !braking) speed -= (DRAG_BASE + speed * DRAG_SPEED) * dt;
+        if (throttle) speed += currentVehicle.accel * dt;
+        if (braking) speed -= currentVehicle.brake * dt;
+        if (!throttle && !braking) speed -= (currentVehicle.dragBase + speed * currentVehicle.dragSpeed) * dt;
       }
 
-      speed = clamp(speed, 0, MAX_SPEED);
+      speed = clamp(speed, 0, currentVehicle.maxSpeed);
       speedValueEl.textContent = Math.round(speed);
 
-      const speedRatio = speed / MAX_SPEED;
-      const motionScale = MOTION_BASE + speedRatio * MOTION_SPEED;
-      const visualSpeed = speed * motionScale;
+      const feelRatio = speedToFeelRatio(speed);
+      const visualSpeed = speedToVisualKmh(speed);
       const move = (visualSpeed / 3.6) * dt;
       dashTravel = (dashTravel + move) % 12;
-      shimmer += dt * (1.25 + visualSpeed / 24);
-      vibration = Math.pow(speedRatio, 1.22) * 3.1;
+      shimmer += dt * (1.25 + visualSpeed / 90);
+      vibration = Math.pow(feelRatio, 1.18) * 3.1;
 
       const metrics = sceneMetrics();
 
@@ -435,9 +563,9 @@
     }
 
     function sceneMetrics() {
-      const speedRatio = speed / MAX_SPEED;
-      const horizonY = h * (0.425 - speedRatio * 0.008);
-      const windshieldBottomY = h * (0.735 - speedRatio * 0.0025);
+      const feelRatio = speedToFeelRatio(speed);
+      const horizonY = h * (0.425 - feelRatio * 0.008);
+      const windshieldBottomY = h * (0.735 - feelRatio * 0.0025);
       const sceneBottomY = windshieldBottomY + h * 0.014;
       const vpX = w * 0.505;
       const f = Math.min(w * 0.72, h * 1.32);
@@ -610,15 +738,16 @@
         fillQuad(a, b, c, d);
       }
 
-      if (speed > 60) {
-        const streakCount = Math.floor((speed - 42) / 6);
+      const feelRatio = speedToFeelRatio(speed);
+      if (feelRatio > 0.18) {
+        const streakCount = Math.round(4 + feelRatio * 24);
         ctx.strokeStyle = 'rgba(255,255,255,0.075)';
         ctx.lineWidth = 2.1;
         for (let i = 0; i < streakCount; i++) {
           const xL = lerp(leftNear.x - 22, leftShoulderNear.x - 60, (i % 5) / 4);
           const xR = lerp(rightNear.x + 22, rightShoulderNear.x + 60, (i % 5) / 4);
           const y1 = horizonY + 52 + ((i * 61 + shimmer * 110) % Math.max(80, sceneBottomY - horizonY - 25));
-          const len = 16 + speed * 0.26;
+          const len = 14 + feelRatio * 92;
           ctx.beginPath();
           ctx.moveTo(xL, y1);
           ctx.lineTo(xL, y1 + len);
@@ -906,8 +1035,8 @@
       ctx.fill();
 
       const dialR = Math.min(w, h) * 0.039;
-      drawDial(clusterX - dialR * 1.00, clusterY + dialR * 0.06, dialR, speed, MAX_SPEED, 'km/h');
-      drawDial(clusterX + dialR * 0.78, clusterY + dialR * 0.06, dialR * 0.82, Math.min(speed * 35, 8000), 8000, 'rpm');
+      drawDial(clusterX - dialR * 1.00, clusterY + dialR * 0.06, dialR, speed, currentVehicle.maxSpeed, 'km/h');
+      drawDial(clusterX + dialR * 0.78, clusterY + dialR * 0.06, dialR * 0.82, (speed / currentVehicle.maxSpeed) * 100, 100, '% max');
 
       const wheelX = w * 0.79;
       const wheelY = h * 0.862;
@@ -1050,7 +1179,7 @@
     }
 
     function setCruise(target, button) {
-      cruiseTarget = clamp(target, 0, MAX_SPEED);
+      cruiseTarget = clamp(target, 0, currentVehicle.maxSpeed);
       speed = cruiseTarget;
       setActivePreset(button);
     }
@@ -1082,14 +1211,60 @@
       speed = 0;
     });
 
-    for (const preset of presets) {
-      const btn = document.createElement('button');
-      btn.textContent = preset + ' km/h';
-      btn.addEventListener('click', () => {
-        setCruise(preset, btn);
-      });
-      presetRow.appendChild(btn);
+    function updateVehicleLabels() {
+      const text = `${currentVehicle.label} · 上限 ${currentVehicle.maxSpeed.toLocaleString('en-US')} km/h`;
+      titleMetaEl.textContent = `目前：${currentVehicle.label}｜上限 ${currentVehicle.maxSpeed.toLocaleString('en-US')} km/h`;
+      modeMiniEl.textContent = text;
     }
+
+    function setActiveMode(button) {
+      if (activeModeButton) activeModeButton.classList.remove('active');
+      activeModeButton = button || null;
+      if (activeModeButton) activeModeButton.classList.add('active');
+    }
+
+    function buildPresetButtons() {
+      presetRow.innerHTML = '';
+      setActivePreset(null);
+      for (const preset of currentVehicle.presets) {
+        const btn = document.createElement('button');
+        btn.textContent = preset.toLocaleString('en-US') + ' km/h';
+        btn.addEventListener('click', () => {
+          setCruise(preset, btn);
+        });
+        presetRow.appendChild(btn);
+      }
+    }
+
+    function selectVehicle(vehicle, button) {
+      currentVehicle = vehicle;
+      throttle = false;
+      braking = false;
+      gasBtn.classList.remove('active');
+      brakeBtn.classList.remove('active');
+      clearCruise();
+      speed = clamp(speed, 0, currentVehicle.maxSpeed);
+      updateVehicleLabels();
+      buildPresetButtons();
+      setActiveMode(button);
+    }
+
+    function buildModeButtons() {
+      modeRow.innerHTML = '';
+      for (const vehicle of vehicles) {
+        const btn = document.createElement('button');
+        btn.textContent = vehicle.label;
+        btn.addEventListener('click', () => selectVehicle(vehicle, btn));
+        modeRow.appendChild(btn);
+        if (vehicle.id === currentVehicle.id) {
+          setActiveMode(btn);
+        }
+      }
+    }
+
+    buildModeButtons();
+    buildPresetButtons();
+    updateVehicleLabels();
 
     window.addEventListener('keydown', (e) => {
       if (['ArrowUp', 'w', 'W'].includes(e.key)) {
