@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>速率概念學習</title>
+  <style>
+    :root {
+      --bg: #eef6ff;
+      --panel: rgba(255,255,255,0.95);
+      --panel-soft: #f7fbff;
+      --line: #d9e8f7;
+      --text: #17324a;
+      --muted: #5d748b;
+      --blue: #2d6cdf;
+      --green: #18a36b;
+      --gold: #f59e0b;
+      --shadow: 0 12px 28px rgba(26, 64, 113, 0.10);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      font-family: "Segoe UI", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(45,108,223,0.10), transparent 26%),
+        radial-gradient(circle at top right, rgba(24,163,107,0.10), transparent 24%),
+        linear-gradient(180deg, #f3f9ff 0%, var(--bg) 100%);
+    }
+
+    body {
+      padding: 12px;
+    }
+
+    .app {
+      max-width: 1160px;
+      margin: 0 auto;
+      display: grid;
+      gap: 12px;
+    }
+
+    .topbar {
+      background: rgba(255,255,255,0.93);
+      border: 1px solid rgba(255,255,255,0.88);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .left-top {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .mode-switch {
+      display: inline-flex;
+      background: #eef5ff;
+      border: 1px solid #cfe0fb;
+      border-radius: 16px;
+      padding: 4px;
+      gap: 4px;
+    }
+
+    .mode-btn {
+      min-width: 124px;
+      min-height: 44px;
+      border: none;
+      border-radius: 12px;
+      background: transparent;
+      color: var(--blue);
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .mode-btn.active {
+      background: linear-gradient(180deg, #3d7af0, #2d6cdf);
+      color: white;
+      box-shadow: 0 8px 18px rgba(45,108,223,0.18);
+    }
+
+    .title-wrap h1 {
+      margin: 0;
+      font-size: clamp(1.2rem, 2vw, 1.7rem);
+      letter-spacing: -0.02em;
+    }
+
+    .title-wrap p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .tip {
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 0.88rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .concept-page {
+      display: none;
+    }
+
+    .concept-page.active {
+      display: block;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid rgba(255,255,255,0.88);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .card-head {
+      padding: 14px 18px 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .card-head h2 {
+      margin: 0;
+      font-size: 1.24rem;
+    }
+
+    .card-head p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 0.94rem;
+    }
+
+    .formula-chip {
+      padding: 8px 12px;
+      background: #fff8e8;
+      border: 1px solid #f3e2b6;
+      border-radius: 14px;
+      font-size: 0.86rem;
+      color: #8a6408;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .track-zone {
+      padding: 10px 18px 12px;
+      background: linear-gradient(180deg, rgba(247,251,255,0.96), rgba(240,247,255,0.92));
+      border-top: 1px solid #eef5fd;
+      border-bottom: 1px solid #eef5fd;
+    }
+
+    .track-note {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .track-stack {
+      display: grid;
+      gap: 10px;
+    }
+
+    .lane-box {
+      display: grid;
+      grid-template-columns: 36px 1fr;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .lane-tag {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: white;
+      font-weight: 900;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.10);
+    }
+
+    .lane-tag.a { background: var(--blue); }
+    .lane-tag.b { background: var(--green); }
+
+    .lane {
+      position: relative;
+      height: 82px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, #e4eefb, #d7e5f7);
+      border: 1px solid #cadcf2;
+      overflow: hidden;
+    }
+
+    .lane::before,
+    .lane::after {
+      content: "";
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      height: 2px;
+      background: rgba(255,255,255,0.82);
+    }
+
+    .lane::before { top: 25px; }
+    .lane::after { bottom: 25px; }
+
+    .start-line,
+    .finish-line {
+      position: absolute;
+      top: 10px;
+      bottom: 10px;
+      width: 4px;
+      border-radius: 999px;
+    }
+
+    .start-line {
+      left: 18px;
+      background: #334155;
+    }
+
+    .finish-line {
+      left: calc(var(--finish, 92%) - 2px);
+      background: repeating-linear-gradient(
+        180deg,
+        #ef4444 0px,
+        #ef4444 8px,
+        #ffffff 8px,
+        #ffffff 16px
+      );
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.4);
+    }
+
+    .distance-badge {
+      position: absolute;
+      top: 6px;
+      left: calc(var(--finish, 92%) - 28px);
+      transform: translateX(-50%);
+      min-width: 54px;
+      text-align: center;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.95);
+      border: 1px solid rgba(255,255,255,0.85);
+      font-size: 0.74rem;
+      color: var(--muted);
+      font-weight: 800;
+      box-shadow: 0 5px 10px rgba(26, 54, 93, 0.08);
+    }
+
+    .start-text,
+    .finish-text {
+      position: absolute;
+      bottom: 6px;
+      font-size: 0.72rem;
+      color: var(--muted);
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .start-text { left: 10px; }
+    .finish-text { left: calc(var(--finish, 92%) - 15px); }
+
+    .runner {
+      position: absolute;
+      top: 50%;
+      left: 18px;
+      width: 54px;
+      height: 42px;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .runner.running .figure {
+      animation: bounce 0.36s infinite linear;
+    }
+
+    .runner.running .arm.left,
+    .runner.running .leg.right {
+      animation: swing-forward 0.36s infinite linear;
+    }
+
+    .runner.running .arm.right,
+    .runner.running .leg.left {
+      animation: swing-backward 0.36s infinite linear;
+    }
+
+    .figure {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 30px;
+      height: 30px;
+      transform: translate(-50%, -50%);
+    }
+
+    .head {
+      position: absolute;
+      top: 0;
+      left: 11px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #1f2937;
+    }
+
+    .body {
+      position: absolute;
+      top: 8px;
+      left: 14px;
+      width: 4px;
+      height: 11px;
+      border-radius: 4px;
+      background: currentColor;
+      transform: rotate(15deg);
+      transform-origin: top center;
+    }
+
+    .arm,
+    .leg {
+      position: absolute;
+      width: 3px;
+      border-radius: 3px;
+      background: currentColor;
+      transform-origin: top center;
+    }
+
+    .arm {
+      top: 10px;
+      height: 10px;
+      left: 15px;
+    }
+
+    .arm.left { transform: rotate(40deg); }
+    .arm.right { transform: rotate(-55deg); }
+
+    .leg {
+      top: 18px;
+      height: 12px;
+      left: 15px;
+    }
+
+    .leg.left { transform: rotate(-30deg); }
+    .leg.right { transform: rotate(42deg); }
+
+    .runner.a { color: var(--blue); }
+    .runner.b { color: var(--green); }
+
+    .control-zone {
+      padding: 14px 18px 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .input-grid-3,
+    .button-row,
+    .result-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .input-grid-3 {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+
+    .button-row {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .field label {
+      font-size: 0.87rem;
+      font-weight: 800;
+    }
+
+    .field small {
+      color: var(--muted);
+      font-size: 0.77rem;
+      margin-top: -2px;
+    }
+
+    input[type="number"] {
+      width: 100%;
+      min-height: 44px;
+      padding: 9px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: white;
+      font: inherit;
+      color: var(--text);
+      outline: none;
+    }
+
+    input[type="number"]:focus {
+      border-color: #a7c8f1;
+      box-shadow: 0 0 0 3px rgba(45,108,223,0.12);
+    }
+
+    button.action {
+      min-height: 44px;
+      border: none;
+      border-radius: 12px;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.15s ease, filter 0.15s ease;
+    }
+
+    button.action:hover { filter: brightness(0.98); }
+    button.action:active { transform: translateY(1px); }
+
+    .btn-primary {
+      background: linear-gradient(180deg, #3d7af0, #2d6cdf);
+      color: white;
+    }
+
+    .btn-light {
+      background: #eef5ff;
+      color: var(--blue);
+      border: 1px solid #cfe0fb;
+    }
+
+    .result-grid {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+
+    .result-box {
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      padding: 10px 12px;
+    }
+
+    .result-box .k {
+      font-size: 0.77rem;
+      color: var(--muted);
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .result-box .v {
+      font-size: 1.02rem;
+      font-weight: 900;
+    }
+
+    .result-box.highlight {
+      background: #fff8e9;
+      border-color: #f2dfae;
+    }
+
+    .result-box.highlight .v {
+      color: #926702;
+    }
+
+    .error {
+      color: #c0392b;
+      font-weight: 700;
+      min-height: 18px;
+      font-size: 0.84rem;
+    }
+
+    .foot-note {
+      padding: 0 18px 16px;
+      color: var(--muted);
+      font-size: 0.85rem;
+      line-height: 1.58;
+    }
+
+    @keyframes bounce {
+      0% { transform: translate(-50%, -50%) translateY(0); }
+      50% { transform: translate(-50%, -50%) translateY(-4px); }
+      100% { transform: translate(-50%, -50%) translateY(0); }
+    }
+
+    @keyframes swing-forward {
+      0% { transform: rotate(45deg); }
+      50% { transform: rotate(-40deg); }
+      100% { transform: rotate(45deg); }
+    }
+
+    @keyframes swing-backward {
+      0% { transform: rotate(-45deg); }
+      50% { transform: rotate(35deg); }
+      100% { transform: rotate(-45deg); }
+    }
+
+    @media (max-width: 900px) {
+      .input-grid-3,
+      .result-grid,
+      .button-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      body { padding: 10px; }
+      .lane-box { grid-template-columns: 30px 1fr; }
+      .lane-tag {
+        width: 30px;
+        height: 30px;
+        font-size: 0.84rem;
+      }
+      .mode-btn {
+        min-width: 110px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="topbar">
+      <div class="left-top">
+        <div class="mode-switch" aria-label="選擇概念">
+          <button type="button" class="mode-btn active" data-target="concept1Page">概念 1</button>
+          <button type="button" class="mode-btn" data-target="concept2Page">概念 2</button>
+        </div>
+        <div class="title-wrap">
+          <h1>速率概念學習</h1>
+          <p>距離相同，越遲越慢；時間相同，越遠越快</p>
+        </div>
+      </div>
+      <div class="tip" id="mainTip">距離相同，越遲越慢</div>
+    </div>
+
+    <section class="concept-page active" id="concept1Page">
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h2>概念 1｜距離相同，越遲越慢</h2>
+            <p>兩個人跑同一段距離，用時較多的那位速度較慢。</p>
+          </div>
+          <div class="formula-chip">速度 = 距離 ÷ 時間</div>
+        </div>
+
+        <div class="track-zone">
+          <div class="track-note">
+            <span>賽路放最上面：兩人終點相同</span>
+            <span id="c1TrackInfo">同跑 10 km</span>
+          </div>
+          <div class="track-stack">
+            <div class="lane-box">
+              <div class="lane-tag a">A</div>
+              <div class="lane" id="c1LaneA" style="--finish: 74%;">
+                <div class="start-line"></div>
+                <div class="finish-line"></div>
+                <div class="distance-badge" id="c1DistanceBadgeA">10 km</div>
+                <div class="start-text">起點</div>
+                <div class="finish-text">終點</div>
+                <div class="runner a" id="c1RunnerA">
+                  <div class="figure">
+                    <div class="head"></div>
+                    <div class="body"></div>
+                    <div class="arm left"></div>
+                    <div class="arm right"></div>
+                    <div class="leg left"></div>
+                    <div class="leg right"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="lane-box">
+              <div class="lane-tag b">B</div>
+              <div class="lane" id="c1LaneB" style="--finish: 74%;">
+                <div class="start-line"></div>
+                <div class="finish-line"></div>
+                <div class="distance-badge" id="c1DistanceBadgeB">10 km</div>
+                <div class="start-text">起點</div>
+                <div class="finish-text">終點</div>
+                <div class="runner b" id="c1RunnerB">
+                  <div class="figure">
+                    <div class="head"></div>
+                    <div class="body"></div>
+                    <div class="arm left"></div>
+                    <div class="arm right"></div>
+                    <div class="leg left"></div>
+                    <div class="leg right"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="control-zone">
+          <div class="input-grid-3">
+            <div class="field">
+              <label for="c1Distance">同一距離（km）</label>
+              <input id="c1Distance" type="number" min="1" max="20" step="0.5" value="10" />
+              <small>改距離時，終點位置會跟住改。</small>
+            </div>
+            <div class="field">
+              <label for="c1TimeAHour">A 用時（小時）</label>
+              <input id="c1TimeAHour" type="number" min="0.1" step="0.1" value="1.0" />
+              <small>例：1、0.1、0.2 小時</small>
+            </div>
+            <div class="field">
+              <label for="c1TimeBHour">B 用時（小時）</label>
+              <input id="c1TimeBHour" type="number" min="0.1" step="0.1" value="1.2" />
+              <small>例：1、0.1、0.2 小時</small>
+            </div>
+          </div>
+          <div class="button-row">
+            <button type="button" class="action btn-primary" id="c1StartBtn">開始比較</button>
+            <button type="button" class="action btn-light" id="c1ResetBtn">重設</button>
+          </div>
+          <div class="error" id="c1Error"></div>
+          <div class="result-grid">
+            <div class="result-box">
+              <div class="k">A 速度</div>
+              <div class="v" id="c1SpeedA">10.0 km/h</div>
+            </div>
+            <div class="result-box">
+              <div class="k">B 速度</div>
+              <div class="v" id="c1SpeedB">8.3 km/h</div>
+            </div>
+            <div class="result-box highlight">
+              <div class="k">比較結果</div>
+              <div class="v" id="c1Compare">A 較快</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="foot-note">教學重點：跑同一段路，誰用時較長，誰就較慢。</div>
+      </div>
+    </section>
+
+    <section class="concept-page" id="concept2Page">
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h2>概念 2｜時間相同，越遠越快</h2>
+            <p>兩個人用相同時間，能跑更遠的那位速度較快。</p>
+          </div>
+          <div class="formula-chip">速度 = 距離 ÷ 時間</div>
+        </div>
+
+        <div class="track-zone">
+          <div class="track-note">
+            <span>賽路放最上面：兩人時間相同</span>
+            <span id="c2TrackInfo">同跑 1 小時</span>
+          </div>
+          <div class="track-stack">
+            <div class="lane-box">
+              <div class="lane-tag a">A</div>
+              <div class="lane" id="c2LaneA" style="--finish: 70%;">
+                <div class="start-line"></div>
+                <div class="finish-line"></div>
+                <div class="distance-badge" id="c2DistanceBadgeA">10 km</div>
+                <div class="start-text">起點</div>
+                <div class="finish-text">終點</div>
+                <div class="runner a" id="c2RunnerA">
+                  <div class="figure">
+                    <div class="head"></div>
+                    <div class="body"></div>
+                    <div class="arm left"></div>
+                    <div class="arm right"></div>
+                    <div class="leg left"></div>
+                    <div class="leg right"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="lane-box">
+              <div class="lane-tag b">B</div>
+              <div class="lane" id="c2LaneB" style="--finish: 86%;">
+                <div class="start-line"></div>
+                <div class="finish-line"></div>
+                <div class="distance-badge" id="c2DistanceBadgeB">14 km</div>
+                <div class="start-text">起點</div>
+                <div class="finish-text">終點</div>
+                <div class="runner b" id="c2RunnerB">
+                  <div class="figure">
+                    <div class="head"></div>
+                    <div class="body"></div>
+                    <div class="arm left"></div>
+                    <div class="arm right"></div>
+                    <div class="leg left"></div>
+                    <div class="leg right"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="control-zone">
+          <div class="input-grid-3">
+            <div class="field">
+              <label for="c2TimeHour">相同時間（小時）</label>
+              <input id="c2TimeHour" type="number" min="0.1" step="0.1" value="1.0" />
+              <small>例：1、0.1、0.2 小時</small>
+            </div>
+            <div class="field">
+              <label for="c2DistanceA">A 距離（km）</label>
+              <input id="c2DistanceA" type="number" min="1" max="20" step="0.5" value="10" />
+            </div>
+            <div class="field">
+              <label for="c2DistanceB">B 距離（km）</label>
+              <input id="c2DistanceB" type="number" min="1" max="20" step="0.5" value="14" />
+            </div>
+          </div>
+          <div class="button-row">
+            <button type="button" class="action btn-primary" id="c2StartBtn">開始比較</button>
+            <button type="button" class="action btn-light" id="c2ResetBtn">重設</button>
+          </div>
+          <div class="error" id="c2Error"></div>
+          <div class="result-grid">
+            <div class="result-box">
+              <div class="k">A 速度</div>
+              <div class="v" id="c2SpeedA">10.0 km/h</div>
+            </div>
+            <div class="result-box">
+              <div class="k">B 速度</div>
+              <div class="v" id="c2SpeedB">14.0 km/h</div>
+            </div>
+            <div class="result-box highlight">
+              <div class="k">比較結果</div>
+              <div class="v" id="c2Compare">B 較快</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="foot-note">教學重點：同樣時間內，誰跑得更遠，誰就較快。</div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    function clamp(value, min, max) {
+      if (!Number.isFinite(value)) return min;
+      return Math.min(max, Math.max(min, value));
+    }
+
+    function formatSpeed(speedKmh) {
+      return `${speedKmh.toFixed(1)} km/h`;
+    }
+
+    function formatHourText(hourValue) {
+      if (!Number.isFinite(hourValue) || hourValue <= 0) return '--';
+      return `${Number(hourValue).toFixed(1).replace(/\.0$/, '')} 小時`;
+    }
+
+    function distanceToFinishPercent(distanceKm) {
+      const d = clamp(distanceKm, 1, 20);
+      return 32 + ((d - 1) / 19) * 60;
+    }
+
+    function setRunnerProgress(laneEl, runnerEl, progress) {
+      const laneWidth = laneEl.clientWidth;
+      const startX = 18;
+      const finishPercent = parseFloat(getComputedStyle(laneEl).getPropertyValue('--finish')) || 92;
+      const finishX = (finishPercent / 100) * laneWidth;
+      const safeProgress = clamp(progress, 0, 1);
+      const x = startX + (finishX - startX) * safeProgress;
+      runnerEl.style.left = `${x}px`;
+    }
+
+    function resetRunner(laneEl, runnerEl) {
+      runnerEl.classList.remove('running');
+      setRunnerProgress(laneEl, runnerEl, 0);
+    }
+
+    const mainTip = document.getElementById('mainTip');
+    const modeButtons = [...document.querySelectorAll('.mode-btn')];
+    const pages = [...document.querySelectorAll('.concept-page')];
+
+    function stopAllAnimations() {
+      cancelAnimationFrame(concept1.animId);
+      cancelAnimationFrame(concept2.animId);
+      concept1.runnerA.classList.remove('running');
+      concept1.runnerB.classList.remove('running');
+      concept2.runnerA.classList.remove('running');
+      concept2.runnerB.classList.remove('running');
+    }
+
+    function switchPage(pageId) {
+      stopAllAnimations();
+      modeButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.target === pageId));
+      pages.forEach(page => page.classList.toggle('active', page.id === pageId));
+      if (pageId === 'concept1Page') {
+        mainTip.textContent = '距離相同，越遲越慢';
+        updateConcept1();
+      } else {
+        mainTip.textContent = '時間相同，越遠越快';
+        updateConcept2();
+      }
+    }
+
+    modeButtons.forEach(btn => {
+      btn.addEventListener('click', () => switchPage(btn.dataset.target));
+    });
+
+    const concept1 = {
+      distance: document.getElementById('c1Distance'),
+      timeAHour: document.getElementById('c1TimeAHour'),
+      timeBHour: document.getElementById('c1TimeBHour'),
+      laneA: document.getElementById('c1LaneA'),
+      laneB: document.getElementById('c1LaneB'),
+      runnerA: document.getElementById('c1RunnerA'),
+      runnerB: document.getElementById('c1RunnerB'),
+      badgeA: document.getElementById('c1DistanceBadgeA'),
+      badgeB: document.getElementById('c1DistanceBadgeB'),
+      speedA: document.getElementById('c1SpeedA'),
+      speedB: document.getElementById('c1SpeedB'),
+      compare: document.getElementById('c1Compare'),
+      error: document.getElementById('c1Error'),
+      trackInfo: document.getElementById('c1TrackInfo'),
+      startBtn: document.getElementById('c1StartBtn'),
+      resetBtn: document.getElementById('c1ResetBtn'),
+      animId: null
+    };
+
+    const concept2 = {
+      timeHour: document.getElementById('c2TimeHour'),
+      distanceA: document.getElementById('c2DistanceA'),
+      distanceB: document.getElementById('c2DistanceB'),
+      laneA: document.getElementById('c2LaneA'),
+      laneB: document.getElementById('c2LaneB'),
+      runnerA: document.getElementById('c2RunnerA'),
+      runnerB: document.getElementById('c2RunnerB'),
+      badgeA: document.getElementById('c2DistanceBadgeA'),
+      badgeB: document.getElementById('c2DistanceBadgeB'),
+      speedA: document.getElementById('c2SpeedA'),
+      speedB: document.getElementById('c2SpeedB'),
+      compare: document.getElementById('c2Compare'),
+      error: document.getElementById('c2Error'),
+      trackInfo: document.getElementById('c2TrackInfo'),
+      startBtn: document.getElementById('c2StartBtn'),
+      resetBtn: document.getElementById('c2ResetBtn'),
+      animId: null
+    };
+
+    function updateConcept1() {
+      const distance = clamp(parseFloat(concept1.distance.value), 1, 20);
+      const timeA = parseFloat(concept1.timeAHour.value);
+      const timeB = parseFloat(concept1.timeBHour.value);
+      concept1.distance.value = distance;
+      concept1.error.textContent = '';
+      cancelAnimationFrame(concept1.animId);
+
+      const finish = distanceToFinishPercent(distance);
+      concept1.laneA.style.setProperty('--finish', `${finish}%`);
+      concept1.laneB.style.setProperty('--finish', `${finish}%`);
+      concept1.badgeA.textContent = `${distance} km`;
+      concept1.badgeB.textContent = `${distance} km`;
+      concept1.trackInfo.textContent = `同跑 ${distance} km`;
+
+      resetRunner(concept1.laneA, concept1.runnerA);
+      resetRunner(concept1.laneB, concept1.runnerB);
+
+      if (!(timeA > 0) || !(timeB > 0)) {
+        concept1.speedA.textContent = '--';
+        concept1.speedB.textContent = '--';
+        concept1.compare.textContent = '請輸入大於 0 的時間';
+        concept1.error.textContent = '時間必須大於 0。';
+        return null;
+      }
+
+      const speedA = distance / timeA;
+      const speedB = distance / timeB;
+      concept1.speedA.textContent = formatSpeed(speedA);
+      concept1.speedB.textContent = formatSpeed(speedB);
+
+      if (Math.abs(speedA - speedB) < 0.0001) {
+        concept1.compare.textContent = '兩人一樣快';
+      } else if (speedA > speedB) {
+        concept1.compare.textContent = 'A 較快；B 較遲到終點，所以較慢';
+      } else {
+        concept1.compare.textContent = 'B 較快；A 較遲到終點，所以較慢';
+      }
+
+      return { timeA, timeB };
+    }
+
+    function runConcept1() {
+      const data = updateConcept1();
+      if (!data) return;
+      cancelAnimationFrame(concept1.animId);
+      resetRunner(concept1.laneA, concept1.runnerA);
+      resetRunner(concept1.laneB, concept1.runnerB);
+      concept1.runnerA.classList.add('running');
+      concept1.runnerB.classList.add('running');
+
+      const maxTime = Math.max(data.timeA, data.timeB);
+      const scaledA = (data.timeA / maxTime) * 4200;
+      const scaledB = (data.timeB / maxTime) * 4200;
+      const start = performance.now();
+
+      function frame(now) {
+        const elapsed = now - start;
+        const pA = scaledA > 0 ? Math.min(1, elapsed / scaledA) : 1;
+        const pB = scaledB > 0 ? Math.min(1, elapsed / scaledB) : 1;
+        setRunnerProgress(concept1.laneA, concept1.runnerA, pA);
+        setRunnerProgress(concept1.laneB, concept1.runnerB, pB);
+
+        if (pA >= 1) concept1.runnerA.classList.remove('running');
+        if (pB >= 1) concept1.runnerB.classList.remove('running');
+
+        if (pA < 1 || pB < 1) {
+          concept1.animId = requestAnimationFrame(frame);
+        }
+      }
+
+      concept1.animId = requestAnimationFrame(frame);
+    }
+
+    function resetConcept1() {
+      cancelAnimationFrame(concept1.animId);
+      updateConcept1();
+    }
+
+    function updateConcept2() {
+      const time = parseFloat(concept2.timeHour.value);
+      const distanceA = clamp(parseFloat(concept2.distanceA.value), 1, 20);
+      const distanceB = clamp(parseFloat(concept2.distanceB.value), 1, 20);
+      concept2.distanceA.value = distanceA;
+      concept2.distanceB.value = distanceB;
+      concept2.error.textContent = '';
+      cancelAnimationFrame(concept2.animId);
+
+      const finishA = distanceToFinishPercent(distanceA);
+      const finishB = distanceToFinishPercent(distanceB);
+      concept2.laneA.style.setProperty('--finish', `${finishA}%`);
+      concept2.laneB.style.setProperty('--finish', `${finishB}%`);
+      concept2.badgeA.textContent = `${distanceA} km`;
+      concept2.badgeB.textContent = `${distanceB} km`;
+      concept2.trackInfo.textContent = `同跑 ${formatHourText(time)}`;
+
+      resetRunner(concept2.laneA, concept2.runnerA);
+      resetRunner(concept2.laneB, concept2.runnerB);
+
+      if (!(time > 0)) {
+        concept2.speedA.textContent = '--';
+        concept2.speedB.textContent = '--';
+        concept2.compare.textContent = '請輸入大於 0 的時間';
+        concept2.error.textContent = '時間必須大於 0。';
+        return null;
+      }
+
+      const speedA = distanceA / time;
+      const speedB = distanceB / time;
+      concept2.speedA.textContent = formatSpeed(speedA);
+      concept2.speedB.textContent = formatSpeed(speedB);
+
+      if (Math.abs(speedA - speedB) < 0.0001) {
+        concept2.compare.textContent = '兩人一樣快';
+      } else if (speedA > speedB) {
+        concept2.compare.textContent = 'A 較快；因為相同時間內跑得更遠';
+      } else {
+        concept2.compare.textContent = 'B 較快；因為相同時間內跑得更遠';
+      }
+
+      return true;
+    }
+
+    function runConcept2() {
+      const ok = updateConcept2();
+      if (!ok) return;
+      cancelAnimationFrame(concept2.animId);
+      resetRunner(concept2.laneA, concept2.runnerA);
+      resetRunner(concept2.laneB, concept2.runnerB);
+      concept2.runnerA.classList.add('running');
+      concept2.runnerB.classList.add('running');
+
+      const scaled = 4200;
+      const start = performance.now();
+
+      function frame(now) {
+        const elapsed = now - start;
+        const p = Math.min(1, elapsed / scaled);
+        setRunnerProgress(concept2.laneA, concept2.runnerA, p);
+        setRunnerProgress(concept2.laneB, concept2.runnerB, p);
+
+        if (p >= 1) {
+          concept2.runnerA.classList.remove('running');
+          concept2.runnerB.classList.remove('running');
+        } else {
+          concept2.animId = requestAnimationFrame(frame);
+        }
+      }
+
+      concept2.animId = requestAnimationFrame(frame);
+    }
+
+    function resetConcept2() {
+      cancelAnimationFrame(concept2.animId);
+      updateConcept2();
+    }
+
+    [concept1.distance, concept1.timeAHour, concept1.timeBHour].forEach(el => {
+      el.addEventListener('input', updateConcept1);
+    });
+
+    [concept2.timeHour, concept2.distanceA, concept2.distanceB].forEach(el => {
+      el.addEventListener('input', updateConcept2);
+    });
+
+    concept1.startBtn.addEventListener('click', runConcept1);
+    concept1.resetBtn.addEventListener('click', resetConcept1);
+    concept2.startBtn.addEventListener('click', runConcept2);
+    concept2.resetBtn.addEventListener('click', resetConcept2);
+
+    window.addEventListener('resize', () => {
+      updateConcept1();
+      updateConcept2();
+    });
+
+    updateConcept1();
+    updateConcept2();
+  </script>
+</body>
+</html>
