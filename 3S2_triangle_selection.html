@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>三角形分類遊戲</title>
+  <style>
+    :root {
+      --bg1: #f6f8ff;
+      --bg2: #eefaff;
+      --panel: rgba(255,255,255,.92);
+      --text: #1d2a39;
+      --sub: #59697e;
+      --accent: #4c69ff;
+      --accent-soft: rgba(76,105,255,.10);
+      --danger: #e13c3c;
+      --success: #178a50;
+      --border: rgba(44, 63, 90, .12);
+      --shadow: 0 12px 30px rgba(29, 53, 84, .12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(255,255,255,.96) 0%, rgba(255,255,255,.88) 24%, transparent 50%),
+        linear-gradient(135deg, var(--bg1), var(--bg2));
+      display: flex;
+      justify-content: center;
+      padding: 14px;
+    }
+
+    .wrap {
+      width: min(1100px, 100%);
+      display: grid;
+      gap: 12px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(6px);
+    }
+
+    .top {
+      padding: 16px 18px;
+      display: grid;
+      gap: 12px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.35rem, 2.6vw, 2rem);
+      line-height: 1.18;
+    }
+
+    .lead {
+      margin: 0;
+      color: var(--sub);
+      font-size: 1rem;
+      line-height: 1.65;
+    }
+
+    .toolbar {
+      display: grid;
+      gap: 10px;
+    }
+
+    .mode-row,
+    .action-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .mode-buttons,
+    .status {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .mode-btn,
+    .primary-btn {
+      border: none;
+      border-radius: 12px;
+      padding: 11px 16px;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform .12s ease, filter .12s ease, background .15s ease, color .15s ease;
+    }
+
+    .mode-btn {
+      background: var(--accent-soft);
+      color: var(--accent);
+      box-shadow: inset 0 0 0 1px rgba(76,105,255,.12);
+    }
+
+    .mode-btn.active {
+      background: var(--accent);
+      color: white;
+      box-shadow: 0 9px 20px rgba(76,105,255,.24);
+    }
+
+    .primary-btn {
+      background: var(--accent);
+      color: white;
+      box-shadow: 0 9px 20px rgba(76,105,255,.24);
+    }
+
+    .mode-btn:hover,
+    .primary-btn:hover { filter: brightness(1.04); }
+
+    .mode-btn:active,
+    .primary-btn:active { transform: translateY(1px) scale(.99); }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(76,105,255,.08);
+      color: var(--sub);
+      font-weight: 700;
+    }
+
+    .board-panel {
+      padding: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .board-stage {
+      position: relative;
+    }
+
+    .board-overlay {
+      position: absolute;
+      inset: 0;
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      text-align: center;
+      background: rgba(255,255,255,.10);
+      backdrop-filter: blur(2px);
+      pointer-events: none;
+      opacity: 0;
+      transform: scale(.985);
+      transition: opacity .18s ease, transform .18s ease;
+      z-index: 6;
+    }
+
+    .board-overlay.show {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .board-overlay.lose {
+      background: rgba(255,246,246,.34);
+    }
+
+    .board-overlay.win {
+      background: rgba(245,255,249,.24);
+    }
+
+    .board-overlay.win .board-overlay-main {
+      color: #147647;
+      text-shadow: 0 3px 0 rgba(255,255,255,.96), 0 10px 28px rgba(20,118,71,.20);
+      animation: winPulse 1.15s ease-in-out infinite;
+    }
+
+    .board-overlay.win .board-overlay-sub {
+      color: #245940;
+      border-color: rgba(20,118,71,.14);
+      box-shadow: 0 8px 24px rgba(20,118,71,.10);
+    }
+
+    .board-overlay-main {
+      font-size: clamp(2.5rem, 7vw, 5rem);
+      line-height: 1.05;
+      font-weight: 900;
+      letter-spacing: .05em;
+      color: #bf2e2e;
+      text-shadow: 0 3px 0 rgba(255,255,255,.95), 0 10px 24px rgba(191,46,46,.18);
+    }
+
+    .board-overlay-sub {
+      max-width: min(86%, 720px);
+      font-size: clamp(1rem, 2.25vw, 1.45rem);
+      line-height: 1.5;
+      color: #7a3131;
+      font-weight: 800;
+      background: rgba(255,255,255,.78);
+      border: 1px solid rgba(191,46,46,.12);
+      border-radius: 999px;
+      padding: 10px 18px;
+      box-shadow: 0 8px 24px rgba(122,49,49,.08);
+    }
+
+    svg {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(255,255,255,.96), rgba(245,250,255,.96));
+      border: 1px solid rgba(44,64,93,.10);
+    }
+
+    .fx-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      pointer-events: none;
+      border-radius: 16px;
+      z-index: 5;
+    }
+
+    .triangle {
+      cursor: pointer;
+      transition: transform .18s ease, filter .18s ease, opacity .18s ease;
+      transform-origin: center;
+      transform-box: fill-box;
+    }
+
+    .triangle:hover {
+      filter: drop-shadow(0 8px 14px rgba(16,35,62,.18));
+    }
+
+    .triangle.locked,
+    .triangle.done {
+      cursor: default;
+    }
+
+    .triangle polygon.base {
+      stroke: rgba(22, 34, 48, .74);
+      stroke-width: 3.6;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .triangle .done-overlay,
+    .triangle .tick-overlay,
+    .triangle .cross-overlay {
+      display: none;
+      pointer-events: none;
+    }
+
+    .triangle.done,
+    .triangle.revealed {
+      transform: scale(1.055);
+      filter: drop-shadow(0 0 10px rgba(23,138,80,.16)) drop-shadow(0 12px 18px rgba(23,138,80,.22));
+    }
+
+    .triangle.done .done-overlay,
+    .triangle.done .tick-overlay,
+    .triangle.revealed .done-overlay,
+    .triangle.revealed .tick-overlay {
+      display: block;
+    }
+
+    .triangle.done polygon.base,
+    .triangle.revealed polygon.base {
+      stroke: rgba(18, 84, 54, .95);
+      stroke-width: 6.4;
+    }
+
+    .triangle.faded {
+      opacity: .26;
+      filter: saturate(.7);
+    }
+
+    .tick-bubble {
+      fill: rgba(255,255,255,.46);
+      stroke: rgba(23,138,80,.18);
+      stroke-width: 2;
+    }
+
+    .tick-mark {
+      fill: rgba(23,138,80,.97);
+      stroke: white;
+      stroke-width: 9;
+      paint-order: stroke;
+      font-weight: 900;
+      text-anchor: middle;
+      dominant-baseline: middle;
+      filter: drop-shadow(0 4px 10px rgba(23,138,80,.25));
+    }
+
+    .triangle.wrong .cross-overlay {
+      display: block;
+    }
+
+    .cross-line {
+      stroke: var(--danger);
+      stroke-width: 14;
+      stroke-linecap: round;
+      vector-effect: non-scaling-stroke;
+      filter: drop-shadow(0 5px 8px rgba(225,60,60,.2));
+    }
+
+    .message {
+      padding: 14px 18px 18px;
+      font-size: 1.02rem;
+      line-height: 1.65;
+      color: var(--sub);
+    }
+
+    .message strong { color: var(--text); }
+    .message .good { color: var(--success); }
+    .message .bad { color: var(--danger); }
+
+    .footer-note {
+      font-size: .95rem;
+      color: var(--sub);
+      padding: 0 18px 18px;
+      line-height: 1.6;
+    }
+
+    @keyframes winPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.04); }
+    }
+
+    @media (max-width: 760px) {
+      body { padding: 10px; }
+      .top, .message, .footer-note { padding-left: 14px; padding-right: 14px; }
+      .mode-row, .action-row { align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="panel top">
+      <div>
+        <h1 id="titleText">模式 1：找出等腰三角形</h1>
+      </div>
+      <p class="lead" id="leadText">請按出 10 個三角形之中全部 5 個等腰三角形。等腰直角三角形和等邊三角形都算等腰三角形。</p>
+
+      <div class="toolbar">
+        <div class="mode-row">
+          <div class="mode-buttons">
+            <button class="mode-btn active" type="button" data-mode="isosceles">1. 找出等腰三角形</button>
+            <button class="mode-btn" type="button" data-mode="equilateral">2. 找出等邊三角形</button>
+            <button class="mode-btn" type="button" data-mode="right">3. 找出直角三角形</button>
+          </div>
+        </div>
+
+        <div class="action-row">
+          <div class="status">
+            <span class="pill">三角形數量：10 個</span>
+            <span class="pill">正確答案：5 個</span>
+            <span class="pill" id="progressPill">已找出：0 / 5 個</span>
+          </div>
+          <button id="restartBtn" class="primary-btn" type="button">重新出題</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel board-panel">
+      <div class="board-stage">
+        <svg id="board" viewBox="0 0 980 620" aria-label="三角形分類遊戲畫板"></svg>
+        <canvas id="fxCanvas" class="fx-canvas" width="980" height="620" aria-hidden="true"></canvas>
+        <div id="boardOverlay" class="board-overlay" aria-hidden="true">
+          <div id="boardOverlayMain" class="board-overlay-main"></div>
+          <div id="boardOverlaySub" class="board-overlay-sub"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div id="message" class="message"><strong>開始吧！</strong> 請找出 10 個三角形之中全部 5 個等腰三角形。</div>
+      <div id="footerNote" class="footer-note">這一局要找的是等腰三角形。等腰直角三角形和等邊三角形都算等腰三角形。每個三角形顏色不同，位置和角度每次都隨機，而且互不重疊。</div>
+    </section>
+  </div>
+
+  <script>
+    const TOTAL_TRIANGLES = 10;
+    const TARGET_TRIANGLES = 5;
+    const BOARD_W = 980;
+    const BOARD_H = 620;
+    const SIDE_MARGIN = 14;
+    const TOP_CLEARANCE = 16;
+    const BOTTOM_MARGIN = 16;
+    const SAFE_GAP = 10;
+    const AUDIO_GAIN_MULTIPLIER = 2.2;
+
+    const MODES = {
+      isosceles: {
+        key: 'isosceles',
+        title: '模式 1：找出等腰三角形',
+        buttonLabel: '找出等腰三角形',
+        targetLabel: '等腰三角形',
+        lead: '請按出 10 個三角形之中全部 5 個等腰三角形。等腰直角三角形和等邊三角形都算等腰三角形。',
+        footer: '這一局要找的是等腰三角形。等腰直角三角形和等邊三角形都算等腰三角形。每個三角形顏色不同，位置和角度每次都隨機，而且互不重疊。',
+        intro: '請找出 10 個三角形之中全部 5 個等腰三角形。',
+        successHint: '✓ 已覆蓋在三角形上，請繼續找出其餘等腰三角形。',
+        winText: '你已經找出全部 5 個等腰三角形。',
+        loseText: '你按中的不是等腰三角形，遊戲結束。正確答案已顯示。按「重新出題」可再玩一次。',
+        buildTypes() {
+          const targets = ['equilateral', 'isosceles', 'isoscelesRight'];
+          while (targets.length < TARGET_TRIANGLES) {
+            targets.push(pick(['isosceles', 'isoscelesRight', 'equilateral'], [0.42, 0.38, 0.20]));
+          }
+          const others = ['scalene', 'rightScalene'];
+          while (others.length < TOTAL_TRIANGLES - TARGET_TRIANGLES) {
+            others.push(Math.random() < 0.5 ? 'scalene' : 'rightScalene');
+          }
+          return makePlan(targets, others);
+        }
+      },
+      equilateral: {
+        key: 'equilateral',
+        title: '模式 2：找出等邊三角形',
+        buttonLabel: '找出等邊三角形',
+        targetLabel: '等邊三角形',
+        lead: '請按出 10 個三角形之中全部 5 個等邊三角形。只有三邊都相等的才算等邊三角形。',
+        footer: '這一局要找的是等邊三角形。不要把一般等腰三角形或直角三角形也算進去。每個三角形顏色不同，位置和角度每次都隨機，而且互不重疊。',
+        intro: '請找出 10 個三角形之中全部 5 個等邊三角形。',
+        successHint: '✓ 已覆蓋在三角形上，請繼續找出其餘等邊三角形。',
+        winText: '你已經找出全部 5 個等邊三角形。',
+        loseText: '你按中的不是等邊三角形，遊戲結束。正確答案已顯示。按「重新出題」可再玩一次。',
+        buildTypes() {
+          const targets = Array(TARGET_TRIANGLES).fill('equilateral');
+          const others = ['isosceles', 'isoscelesRight', 'scalene', 'rightScalene'];
+          while (others.length < TOTAL_TRIANGLES - TARGET_TRIANGLES) {
+            others.push(pick(['isosceles', 'isoscelesRight', 'scalene', 'rightScalene'], [0.30, 0.22, 0.28, 0.20]));
+          }
+          return makePlan(targets, others);
+        }
+      },
+      right: {
+        key: 'right',
+        title: '模式 3：找出直角三角形',
+        buttonLabel: '找出直角三角形',
+        targetLabel: '直角三角形',
+        lead: '請按出 10 個三角形之中全部 5 個直角三角形。等腰直角三角形也屬於直角三角形。',
+        footer: '這一局要找的是直角三角形。只要有一個角是直角，就算直角三角形；等腰直角三角形也算。每個三角形顏色不同，位置和角度每次都隨機，而且互不重疊。',
+        intro: '請找出 10 個三角形之中全部 5 個直角三角形。',
+        successHint: '✓ 已覆蓋在三角形上，請繼續找出其餘直角三角形。',
+        winText: '你已經找出全部 5 個直角三角形。',
+        loseText: '你按中的不是直角三角形，遊戲結束。正確答案已顯示。按「重新出題」可再玩一次。',
+        buildTypes() {
+          const targets = ['isoscelesRight', 'rightScalene'];
+          while (targets.length < TARGET_TRIANGLES) {
+            targets.push(Math.random() < 0.48 ? 'isoscelesRight' : 'rightScalene');
+          }
+          const others = ['equilateral', 'isosceles', 'scalene'];
+          while (others.length < TOTAL_TRIANGLES - TARGET_TRIANGLES) {
+            others.push(pick(['equilateral', 'isosceles', 'scalene'], [0.22, 0.44, 0.34]));
+          }
+          return makePlan(targets, others);
+        }
+      }
+    };
+
+    const board = document.getElementById('board');
+    const fxCanvas = document.getElementById('fxCanvas');
+    const fxCtx = fxCanvas.getContext('2d');
+    const boardOverlay = document.getElementById('boardOverlay');
+    const boardOverlayMain = document.getElementById('boardOverlayMain');
+    const boardOverlaySub = document.getElementById('boardOverlaySub');
+    const titleText = document.getElementById('titleText');
+    const leadText = document.getElementById('leadText');
+    const progressPill = document.getElementById('progressPill');
+    const message = document.getElementById('message');
+    const footerNote = document.getElementById('footerNote');
+    const restartBtn = document.getElementById('restartBtn');
+    const modeButtons = [...document.querySelectorAll('.mode-btn')];
+
+    let currentMode = 'isosceles';
+    let gameState = null;
+    let audioCtx = null;
+    let fireworksRaf = 0;
+    let fireworksBurstsRemaining = 0;
+    let fireworksTimers = [];
+    let fireworksParticles = [];
+    let lastFxTime = 0;
+
+    function rand(min, max) { return Math.random() * (max - min) + min; }
+    function randInt(min, max) { return Math.floor(rand(min, max + 1)); }
+
+    function shuffle(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function pick(items, weights) {
+      const total = weights.reduce((a, b) => a + b, 0);
+      let r = Math.random() * total;
+      for (let i = 0; i < items.length; i++) {
+        r -= weights[i];
+        if (r <= 0) return items[i];
+      }
+      return items[items.length - 1];
+    }
+
+    function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+    function near(a, b, tol = 0.9) { return Math.abs(a - b) <= tol; }
+    function dist(p1, p2) { return Math.hypot(p1.x - p2.x, p1.y - p2.y); }
+
+    function rotatePoint(p, angleRad) {
+      const cos = Math.cos(angleRad);
+      const sin = Math.sin(angleRad);
+      return { x: p.x * cos - p.y * sin, y: p.x * sin + p.y * cos };
+    }
+
+    function boundsOf(poly) {
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const p of poly) {
+        minX = Math.min(minX, p.x);
+        minY = Math.min(minY, p.y);
+        maxX = Math.max(maxX, p.x);
+        maxY = Math.max(maxY, p.y);
+      }
+      return { minX, minY, maxX, maxY };
+    }
+
+    function pointInTriangle(point, poly) {
+      const [a, b, c] = poly;
+      const area = (p1, p2, p3) => (p1.x * (p2.y - p3.y) + p2.x * (p3.y - p1.y) + p3.x * (p1.y - p2.y));
+      const s1 = area(point, a, b);
+      const s2 = area(point, b, c);
+      const s3 = area(point, c, a);
+      const hasNeg = (s1 < 0) || (s2 < 0) || (s3 < 0);
+      const hasPos = (s1 > 0) || (s2 > 0) || (s3 > 0);
+      return !(hasNeg && hasPos);
+    }
+
+    function orientation(a, b, c) {
+      const val = (b.y - a.y) * (c.x - b.x) - (b.x - a.x) * (c.y - b.y);
+      if (Math.abs(val) < 1e-9) return 0;
+      return val > 0 ? 1 : 2;
+    }
+
+    function onSegment(a, b, c) {
+      return Math.min(a.x, c.x) - 1e-9 <= b.x && b.x <= Math.max(a.x, c.x) + 1e-9 &&
+             Math.min(a.y, c.y) - 1e-9 <= b.y && b.y <= Math.max(a.y, c.y) + 1e-9;
+    }
+
+    function segmentsIntersect(p1, q1, p2, q2) {
+      const o1 = orientation(p1, q1, p2);
+      const o2 = orientation(p1, q1, q2);
+      const o3 = orientation(p2, q2, p1);
+      const o4 = orientation(p2, q2, q1);
+      if (o1 !== o2 && o3 !== o4) return true;
+      if (o1 === 0 && onSegment(p1, p2, q1)) return true;
+      if (o2 === 0 && onSegment(p1, q2, q1)) return true;
+      if (o3 === 0 && onSegment(p2, p1, q2)) return true;
+      if (o4 === 0 && onSegment(p2, q1, q2)) return true;
+      return false;
+    }
+
+    function pointToSegmentDistance(p, a, b) {
+      const abx = b.x - a.x;
+      const aby = b.y - a.y;
+      const ab2 = abx * abx + aby * aby;
+      if (ab2 === 0) return dist(p, a);
+      const t = clamp(((p.x - a.x) * abx + (p.y - a.y) * aby) / ab2, 0, 1);
+      const proj = { x: a.x + abx * t, y: a.y + aby * t };
+      return dist(p, proj);
+    }
+
+    function segmentDistance(a1, a2, b1, b2) {
+      if (segmentsIntersect(a1, a2, b1, b2)) return 0;
+      return Math.min(
+        pointToSegmentDistance(a1, b1, b2),
+        pointToSegmentDistance(a2, b1, b2),
+        pointToSegmentDistance(b1, a1, a2),
+        pointToSegmentDistance(b2, a1, a2),
+      );
+    }
+
+    function polygonsTooClose(polyA, polyB, gap = SAFE_GAP) {
+      const edgesA = [[polyA[0], polyA[1]], [polyA[1], polyA[2]], [polyA[2], polyA[0]]];
+      const edgesB = [[polyB[0], polyB[1]], [polyB[1], polyB[2]], [polyB[2], polyB[0]]];
+      for (const [a1, a2] of edgesA) {
+        for (const [b1, b2] of edgesB) {
+          if (segmentDistance(a1, a2, b1, b2) < gap) return true;
+        }
+      }
+      for (const p of polyA) if (pointInTriangle(p, polyB)) return true;
+      for (const p of polyB) if (pointInTriangle(p, polyA)) return true;
+      return false;
+    }
+
+    function centroidOf(poly) {
+      return { x: (poly[0].x + poly[1].x + poly[2].x) / 3, y: (poly[0].y + poly[1].y + poly[2].y) / 3 };
+    }
+
+    function triangleFromSides(ab, ac, bc) {
+      const x = (ac * ac + ab * ab - bc * bc) / (2 * ab);
+      const ySq = Math.max(0, ac * ac - x * x);
+      const y = Math.sqrt(ySq);
+      const pts = [{ x: 0, y: 0 }, { x: ab, y: 0 }, { x, y }];
+      const centroid = centroidOf(pts);
+      return pts.map(p => ({ x: p.x - centroid.x, y: p.y - centroid.y }));
+    }
+
+    function isRightBySides(a, b, c, tol = 2.2) {
+      const s = [a, b, c].sort((m, n) => m - n);
+      return Math.abs(s[0] * s[0] + s[1] * s[1] - s[2] * s[2]) <= tol * tol;
+    }
+
+    function makeEquilateral() {
+      const s = rand(108, 138);
+      return triangleFromSides(s, s, s);
+    }
+
+    function makeIsosceles() {
+      for (let tries = 0; tries < 180; tries++) {
+        const equalSide = rand(118, 152);
+        const family = Math.random() < 0.62 ? 'tall' : 'wide';
+        const base = family === 'tall'
+          ? rand(equalSide * 0.56, equalSide * 0.78)
+          : rand(equalSide * 1.16, equalSide * 1.32);
+        if (Math.abs(base - equalSide) < 16) continue;
+        if (Math.abs(base - equalSide * Math.sqrt(2)) < 12) continue;
+        if (base >= equalSide * 2 - 8) continue;
+        if (isRightBySides(equalSide, equalSide, base, 4.2)) continue;
+        return triangleFromSides(base, equalSide, equalSide);
+      }
+      return triangleFromSides(88, 136, 136);
+    }
+
+    function makeIsoscelesRight() {
+      const leg = rand(90, 126);
+      return triangleFromSides(leg, leg, leg * Math.sqrt(2));
+    }
+
+    function makeRightScalene() {
+      const scales = [24, 26, 28, 30, 32];
+      const scale = scales[randInt(0, scales.length - 1)];
+      let a = 3 * scale;
+      let b = 4 * scale;
+      if (Math.random() < 0.5) [a, b] = [b, a];
+      const c = 5 * scale;
+      return triangleFromSides(a, c, b);
+    }
+
+    function makeScalene() {
+      for (let tries = 0; tries < 240; tries++) {
+        const s1 = rand(78, 96);
+        const s2 = s1 * rand(1.24, 1.42);
+        const minS3 = Math.max(s2 * 1.15, s2 + 18);
+        const maxS3 = Math.min(s1 + s2 - 14, 166);
+        if (maxS3 <= minS3 + 2) continue;
+        const s3 = rand(minS3, maxS3);
+        const sides = [s1, s2, s3].sort((m, n) => m - n);
+        if (sides[0] + sides[1] <= sides[2] + 6) continue;
+        if (sides[1] / sides[0] < 1.18 || sides[2] / sides[1] < 1.12) continue;
+        if (isRightBySides(...sides, 7.5)) continue;
+        return triangleFromSides(sides[0], sides[1], sides[2]);
+      }
+      return triangleFromSides(82, 118, 151);
+    }
+
+    function makeTriangleShape(type) {
+      switch (type) {
+        case 'equilateral': return makeEquilateral();
+        case 'isosceles': return makeIsosceles();
+        case 'isoscelesRight': return makeIsoscelesRight();
+        case 'rightScalene': return makeRightScalene();
+        default: return makeScalene();
+      }
+    }
+
+    function makePlan(targetTypes, otherTypes) {
+      return shuffle([
+        ...targetTypes.map(type => ({ type, isTarget: true })),
+        ...otherTypes.map(type => ({ type, isTarget: false }))
+      ]);
+    }
+
+    function makeColorPalette(count) {
+      const start = randInt(0, 359);
+      const hues = Array.from({ length: count }, (_, i) => (start + i * (360 / count)) % 360);
+      return shuffle(hues).map(h => ({
+        hue: Math.round(h),
+        fill: `hsl(${Math.round(h)} 78% 56%)`,
+        light: `hsl(${Math.round(h)} 85% 84%)`
+      }));
+    }
+
+    function placeTriangle(localPoly, existing) {
+      for (let tries = 0; tries < 820; tries++) {
+        const angle = rand(0, Math.PI * 2);
+        const rotated = localPoly.map(p => rotatePoint(p, angle));
+        const bb = boundsOf(rotated);
+        const tx = rand(SIDE_MARGIN - bb.minX, BOARD_W - SIDE_MARGIN - bb.maxX);
+        const ty = rand(TOP_CLEARANCE - bb.minY, BOARD_H - BOTTOM_MARGIN - bb.maxY);
+        const shifted = rotated.map(p => ({ x: p.x + tx, y: p.y + ty }));
+        if (existing.every(item => !polygonsTooClose(shifted, item.points, SAFE_GAP))) {
+          return { points: shifted };
+        }
+      }
+      return null;
+    }
+
+    function tightenLayout(items) {
+      const allPoints = items.flatMap(item => item.points);
+      const globalBounds = boundsOf(allPoints);
+      const width = globalBounds.maxX - globalBounds.minX;
+      const height = globalBounds.maxY - globalBounds.minY;
+      if (width <= 0 || height <= 0) return;
+      const availableW = BOARD_W - SIDE_MARGIN * 2;
+      const availableH = BOARD_H - TOP_CLEARANCE - BOTTOM_MARGIN;
+      const fitScale = Math.min(availableW / width, availableH / height);
+      const scale = clamp(fitScale * 0.985, 1, 1.22);
+      const centerX = (globalBounds.minX + globalBounds.maxX) / 2;
+      const centerY = (globalBounds.minY + globalBounds.maxY) / 2;
+      const targetX = BOARD_W / 2;
+      const targetY = TOP_CLEARANCE + availableH / 2;
+      for (const item of items) {
+        item.points = item.points.map(p => ({
+          x: (p.x - centerX) * scale + targetX,
+          y: (p.y - centerY) * scale + targetY,
+        }));
+      }
+    }
+
+    function serializePoints(poly) {
+      return poly.map(p => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' ');
+    }
+
+    function createCrossOverlay(bounds) {
+      const pad = 10;
+      const x1 = bounds.minX - pad, y1 = bounds.minY - pad, x2 = bounds.maxX + pad, y2 = bounds.maxY + pad;
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      g.setAttribute('class', 'cross-overlay');
+      const l1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      l1.setAttribute('class', 'cross-line');
+      l1.setAttribute('x1', x1); l1.setAttribute('y1', y1); l1.setAttribute('x2', x2); l1.setAttribute('y2', y2);
+      const l2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      l2.setAttribute('class', 'cross-line');
+      l2.setAttribute('x1', x1); l2.setAttribute('y1', y2); l2.setAttribute('x2', x2); l2.setAttribute('y2', y1);
+      g.appendChild(l1); g.appendChild(l2);
+      return g;
+    }
+
+    function createTickOverlay(poly) {
+      const centroid = centroidOf(poly);
+      const bounds = boundsOf(poly);
+      const width = bounds.maxX - bounds.minX;
+      const height = bounds.maxY - bounds.minY;
+      const bubbleR = clamp(Math.min(width, height) * 0.23, 20, 34);
+      const fontSize = clamp(Math.min(width, height) * 0.62, 56, 92);
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      g.setAttribute('class', 'tick-overlay');
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('class', 'tick-bubble');
+      circle.setAttribute('cx', centroid.x);
+      circle.setAttribute('cy', centroid.y);
+      circle.setAttribute('r', bubbleR);
+      const tick = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      tick.setAttribute('class', 'tick-mark');
+      tick.setAttribute('x', centroid.x);
+      tick.setAttribute('y', centroid.y + 1);
+      tick.setAttribute('font-size', fontSize);
+      tick.textContent = '✓';
+      g.appendChild(circle); g.appendChild(tick);
+      return g;
+    }
+
+    function ensureAudio() {
+      if (!audioCtx) {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return null;
+        audioCtx = new Ctx();
+      }
+      if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+      return audioCtx;
+    }
+
+    function playTone(freq, start, duration, type = 'sine', volume = 0.06) {
+      const ctx = ensureAudio();
+      if (!ctx) return;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const actualVolume = Math.min(0.28, volume * AUDIO_GAIN_MULTIPLIER);
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, start);
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(actualVolume, start + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + duration + 0.03);
+    }
+
+    function playSuccessSound() {
+      const ctx = ensureAudio(); if (!ctx) return;
+      const now = ctx.currentTime;
+      playTone(660, now, 0.10, 'triangle', 0.08);
+      playTone(880, now + 0.10, 0.13, 'triangle', 0.08);
+      playTone(1046, now + 0.22, 0.17, 'triangle', 0.08);
+    }
+
+    function playWinSound() {
+      const ctx = ensureAudio(); if (!ctx) return;
+      const now = ctx.currentTime;
+      [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => playTone(freq, now + i * 0.1, 0.18, 'triangle', 0.09));
+    }
+
+    function playErrorSound() {
+      const ctx = ensureAudio(); if (!ctx) return;
+      const now = ctx.currentTime;
+      playTone(220, now, 0.11, 'sawtooth', 0.10);
+      playTone(170, now + 0.08, 0.15, 'sawtooth', 0.10);
+      playTone(130, now + 0.18, 0.24, 'square', 0.09);
+    }
+
+    function clearFireworksCanvas() {
+      fxCtx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
+    }
+
+    function stopFireworks() {
+      if (fireworksRaf) cancelAnimationFrame(fireworksRaf);
+      fireworksRaf = 0;
+      fireworksBurstsRemaining = 0;
+      fireworksParticles = [];
+      lastFxTime = 0;
+      fireworksTimers.forEach(id => clearTimeout(id));
+      fireworksTimers = [];
+      clearFireworksCanvas();
+    }
+
+    function createFireworkBurst(x, y, options = {}) {
+      const colors = options.colors || ['#ff5a7f', '#ffd84d', '#4c69ff', '#24c47d', '#8a5cff', '#00c7ff', '#ff8a00'];
+      const count = options.count || randInt(28, 40);
+      const baseSpeed = options.baseSpeed || rand(4.4, 8.2);
+      const gravity = options.gravity || 0.11;
+      for (let i = 0; i < count; i++) {
+        const angle = (Math.PI * 2 * i) / count + rand(-0.12, 0.12);
+        const speed = baseSpeed * rand(0.68, 1.22);
+        fireworksParticles.push({
+          x,
+          y,
+          prevX: x,
+          prevY: y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life: rand(42, 62),
+          maxLife: rand(42, 62),
+          gravity,
+          drag: rand(0.978, 0.986),
+          size: rand(1.8, 3.4),
+          color: colors[randInt(0, colors.length - 1)]
+        });
+      }
+    }
+
+    function drawFireworksFrame() {
+      clearFireworksCanvas();
+      for (const p of fireworksParticles) {
+        const alpha = Math.max(0, p.life / p.maxLife);
+        fxCtx.save();
+        fxCtx.globalAlpha = alpha;
+        fxCtx.strokeStyle = p.color;
+        fxCtx.lineWidth = p.size;
+        fxCtx.lineCap = 'round';
+        fxCtx.beginPath();
+        fxCtx.moveTo(p.prevX, p.prevY);
+        fxCtx.lineTo(p.x, p.y);
+        fxCtx.stroke();
+        fxCtx.restore();
+      }
+    }
+
+    function animateFireworks(ts) {
+      if (!lastFxTime) lastFxTime = ts;
+      const delta = Math.min(2.2, (ts - lastFxTime) / 16.7);
+      lastFxTime = ts;
+
+      for (let i = fireworksParticles.length - 1; i >= 0; i--) {
+        const p = fireworksParticles[i];
+        p.prevX = p.x;
+        p.prevY = p.y;
+        p.vx *= Math.pow(p.drag, delta);
+        p.vy *= Math.pow(p.drag, delta);
+        p.vy += p.gravity * delta;
+        p.x += p.vx * delta * 1.28;
+        p.y += p.vy * delta * 1.28;
+        p.life -= delta;
+        if (p.life <= 0) fireworksParticles.splice(i, 1);
+      }
+
+      drawFireworksFrame();
+
+      if (fireworksParticles.length > 0 || fireworksBurstsRemaining > 0) {
+        fireworksRaf = requestAnimationFrame(animateFireworks);
+      } else {
+        stopFireworks();
+      }
+    }
+
+    function startFireworks() {
+      stopFireworks();
+      const burstPositions = [
+        { x: BOARD_W * 0.22, y: BOARD_H * 0.28 },
+        { x: BOARD_W * 0.76, y: BOARD_H * 0.22 },
+        { x: BOARD_W * 0.50, y: BOARD_H * 0.18 },
+        { x: BOARD_W * 0.30, y: BOARD_H * 0.48 },
+        { x: BOARD_W * 0.68, y: BOARD_H * 0.44 },
+        { x: BOARD_W * 0.50, y: BOARD_H * 0.34 }
+      ];
+      const timings = [0, 220, 460, 760, 1100, 1450, 1820];
+      fireworksBurstsRemaining = timings.length;
+      timings.forEach((delay, index) => {
+        const timer = setTimeout(() => {
+          const base = burstPositions[index % burstPositions.length];
+          const jitterX = rand(-70, 70);
+          const jitterY = rand(-45, 45);
+          createFireworkBurst(base.x + jitterX, base.y + jitterY, {
+            count: index === timings.length - 1 ? 54 : randInt(30, 40),
+            baseSpeed: index === timings.length - 1 ? rand(6.8, 9.2) : rand(4.8, 7.6),
+            gravity: index === timings.length - 1 ? 0.095 : 0.11
+          });
+          fireworksBurstsRemaining -= 1;
+          if (!fireworksRaf) {
+            lastFxTime = 0;
+            fireworksRaf = requestAnimationFrame(animateFireworks);
+          }
+        }, delay);
+        fireworksTimers.push(timer);
+      });
+    }
+
+    function setMessage(html) { message.innerHTML = html; }
+
+    function hideBoardOverlay() {
+      boardOverlay.className = 'board-overlay';
+      boardOverlayMain.textContent = '';
+      boardOverlaySub.textContent = '';
+    }
+
+    function showBoardOverlay(kind, mainText, subText) {
+      boardOverlay.className = `board-overlay show ${kind}`;
+      boardOverlayMain.textContent = mainText;
+      boardOverlaySub.textContent = subText;
+    }
+
+    function revealTargets() {
+      if (!gameState) return;
+      for (const item of gameState.items) {
+        if (item.isTarget) {
+          item.group.classList.add('revealed');
+          item.polygon.setAttribute('fill', item.color.light);
+          item.polygon.setAttribute('stroke', 'rgba(18,84,54,.96)');
+          item.polygon.setAttribute('stroke-width', '6.4');
+        } else if (!item.group.classList.contains('wrong')) {
+          item.group.classList.add('faded');
+        }
+      }
+    }
+
+    function renderGame(items) {
+      board.innerHTML = '';
+      for (const item of items) {
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.setAttribute('class', 'triangle');
+        g.dataset.id = item.id;
+        g.setAttribute('tabindex', '0');
+        g.setAttribute('role', 'button');
+        g.setAttribute('aria-label', '三角形');
+
+        const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        poly.setAttribute('class', 'base');
+        poly.setAttribute('points', serializePoints(item.points));
+        poly.setAttribute('fill', item.color.fill);
+        g.appendChild(poly);
+
+        const overlay = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        overlay.setAttribute('class', 'done-overlay');
+        overlay.setAttribute('points', serializePoints(item.points));
+        overlay.setAttribute('fill', 'rgba(255,255,255,.34)');
+        overlay.setAttribute('stroke', 'none');
+        g.appendChild(overlay);
+
+        g.appendChild(createTickOverlay(item.points));
+        g.appendChild(createCrossOverlay(boundsOf(item.points)));
+
+        g.addEventListener('click', () => handleTriangleClick(item.id));
+        g.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleTriangleClick(item.id);
+          }
+        });
+
+        board.appendChild(g);
+        item.group = g;
+        item.polygon = poly;
+      }
+    }
+
+    function buildRound(modeKey) {
+      const mode = MODES[modeKey];
+      const colors = makeColorPalette(TOTAL_TRIANGLES);
+      for (let boardTry = 0; boardTry < 120; boardTry++) {
+        const typePlan = mode.buildTypes();
+        const items = [];
+        let ok = true;
+        for (let i = 0; i < typePlan.length; i++) {
+          const entry = typePlan[i];
+          const local = makeTriangleShape(entry.type);
+          const placement = placeTriangle(local, items);
+          if (!placement) { ok = false; break; }
+          items.push({
+            id: `tri-${modeKey}-${boardTry}-${i}-${Math.random().toString(36).slice(2, 8)}`,
+            type: entry.type,
+            isTarget: entry.isTarget,
+            points: placement.points,
+            color: colors[i],
+            found: false,
+            disabled: false,
+          });
+        }
+        if (ok && items.length === TOTAL_TRIANGLES && items.filter(i => i.isTarget).length === TARGET_TRIANGLES) {
+          tightenLayout(items);
+          return { modeKey, items, over: false, won: false, targetCount: TARGET_TRIANGLES, foundCount: 0 };
+        }
+      }
+      throw new Error('無法建立不重疊的版面，請重新整理再試。');
+    }
+
+    function updateModeUI() {
+      const mode = MODES[currentMode];
+      titleText.textContent = mode.title;
+      leadText.textContent = mode.lead;
+      footerNote.textContent = mode.footer;
+      board.setAttribute('aria-label', `${mode.buttonLabel}遊戲畫板`);
+      for (const btn of modeButtons) btn.classList.toggle('active', btn.dataset.mode === currentMode);
+    }
+
+    function updateProgress() {
+      progressPill.textContent = `已找出：${gameState.foundCount} / ${gameState.targetCount} 個`;
+    }
+
+    function lockAll() {
+      for (const item of gameState.items) {
+        item.disabled = true;
+        item.group.classList.add('locked');
+      }
+    }
+
+    function handleTriangleClick(id) {
+      if (!gameState || gameState.over) return;
+      const item = gameState.items.find(x => x.id === id);
+      if (!item || item.disabled) return;
+      ensureAudio();
+      const mode = MODES[gameState.modeKey];
+      if (item.isTarget) {
+        item.found = true;
+        item.disabled = true;
+        item.group.classList.add('done');
+        item.polygon.setAttribute('fill', item.color.light);
+        item.polygon.setAttribute('stroke', 'rgba(18,84,54,.96)');
+        item.polygon.setAttribute('stroke-width', '6.4');
+        playSuccessSound();
+        gameState.foundCount += 1;
+        updateProgress();
+        if (gameState.foundCount === gameState.targetCount) {
+          gameState.over = true;
+          gameState.won = true;
+          lockAll();
+          playWinSound();
+          showBoardOverlay('win', '任務完成', `你已經成功找出全部 5 個${mode.targetLabel}！`);
+          startFireworks();
+          setMessage(`<strong class="good">任務完成！</strong> ${mode.winText}`);
+        } else {
+          setMessage(`<strong class="good">答對！</strong> ${mode.successHint}`);
+        }
+      } else {
+        gameState.over = true;
+        stopFireworks();
+        item.group.classList.add('wrong', 'locked');
+        item.disabled = true;
+        playErrorSound();
+        revealTargets();
+        lockAll();
+        showBoardOverlay('lose', '遊戲結束', `這一題的 5 個正確答案已經全部顯示出來。`);
+        setMessage(`<strong class="bad">答錯了！</strong> ${mode.loseText}`);
+      }
+    }
+
+    function startGame() {
+      stopFireworks();
+      updateModeUI();
+      try {
+        gameState = buildRound(currentMode);
+        renderGame(gameState.items);
+        hideBoardOverlay();
+        updateProgress();
+        setMessage(`<strong>開始吧！</strong> ${MODES[currentMode].intro}`);
+      } catch (err) {
+        console.error(err);
+        board.innerHTML = '';
+        hideBoardOverlay();
+        setMessage('<strong class="bad">建立題目失敗。</strong> 請按「重新出題」再試一次。');
+      }
+    }
+
+    restartBtn.addEventListener('click', () => {
+      ensureAudio();
+      startGame();
+    });
+
+    modeButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        ensureAudio();
+        currentMode = btn.dataset.mode;
+        startGame();
+      });
+    });
+
+    startGame();
+  </script>
+</body>
+</html>
