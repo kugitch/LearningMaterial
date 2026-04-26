@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>行程圖互動教具 v30</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #f3f4f6;
+      font-family: system-ui, "Microsoft JhengHei", sans-serif;
+      color: #111827;
+    }
+
+    .stage {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 8px;
+      overflow: hidden;
+    }
+
+    .app {
+      width: 1080px;
+      transform-origin: top center;
+    }
+
+    .board {
+      background: white;
+      border-radius: 18px;
+      padding: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.10);
+    }
+
+    .scene {
+      position: relative;
+      height: 170px;
+      border: 2px solid #e5e7eb;
+      border-bottom: 0;
+      border-radius: 14px 14px 0 0;
+      overflow: hidden;
+      background: linear-gradient(#dbeafe 0 58%, #d9e8b8 58% 100%);
+    }
+
+    .point {
+      position: absolute;
+      top: 12px;
+      font-size: 22px;
+      font-weight: 900;
+      z-index: 5;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .point-a { left: 22px; color: #16a34a; }
+
+    .point-b {
+      left: calc(100% - 70px);
+      top: 64px;
+      transform: translateX(-50%);
+      color: #f59e0b;
+      text-align: center;
+    }
+
+    .time-box {
+      position: absolute;
+      top: 10px;
+      right: 16px;
+      min-width: 110px;
+      text-align: center;
+      padding: 6px 12px;
+      font-size: 24px;
+      font-weight: 900;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.9);
+      border: 2px solid rgba(17,24,39,0.12);
+      z-index: 6;
+    }
+
+    .track-wrap {
+      position: absolute;
+      left: 70px;
+      right: 70px;
+      top: 76px;
+      height: 78px;
+    }
+
+    .track-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 42px;
+      height: 4px;
+      background: #111827;
+      border-radius: 999px;
+    }
+
+    .tick {
+      position: absolute;
+      top: 34px;
+      width: 2px;
+      height: 16px;
+      background: #111827;
+      transform: translateX(-50%);
+    }
+
+    .tick.major {
+      top: 29px;
+      width: 3px;
+      height: 26px;
+    }
+
+    .tick-label {
+      position: absolute;
+      top: 58px;
+      transform: translateX(-50%);
+      font-size: 14px;
+      font-weight: 800;
+      color: #111827;
+      white-space: nowrap;
+    }
+
+    .mid-place {
+      position: absolute;
+      left: 66.6667%;
+      top: -24px;
+      transform: translateX(-50%);
+      font-size: 22px;
+      font-weight: 900;
+      color: #0f766e;
+      white-space: nowrap;
+      z-index: 8;
+      pointer-events: none;
+    }
+
+    .top-km-label {
+      position: absolute;
+      left: calc(100% + 8px);
+      top: 58px;
+      transform: none;
+      font-size: 14px;
+      font-weight: 800;
+      color: #111827;
+      white-space: nowrap;
+      z-index: 5;
+      pointer-events: none;
+    }
+
+    .runner {
+      position: absolute;
+      left: 0;
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      font-size: 25px;
+      background: rgba(255,255,255,0.92);
+      border-radius: 999px;
+      filter: drop-shadow(0 3px 3px rgba(0,0,0,0.16));
+      z-index: 6;
+      transition: left 0.04s linear;
+      transform-origin: center;
+    }
+
+    .runner.runner-char {
+      top: 15px;
+      border: 3px solid #ef4444;
+      transform: translate(-50%, -50%) scaleX(-1);
+    }
+
+    .runner.bike-char {
+      top: 78px;
+      border: 3px solid #2563eb;
+      transform: translate(-50%, -50%) scaleX(-1);
+    }
+
+    .track-dot {
+      position: absolute;
+      top: 42px;
+      width: 13px;
+      height: 13px;
+      border-radius: 999px;
+      transform: translate(-50%, -50%);
+      z-index: 7;
+      transition: left 0.04s linear;
+      border: 2px solid white;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.12);
+    }
+
+    .track-dot.runner-char { background: #ef4444; }
+    .track-dot.bike-char { background: #2563eb; }
+
+    .track-dot.combo {
+      display: none;
+      width: 15px;
+      height: 15px;
+      background: linear-gradient(to right, #ef4444 0 50%, #2563eb 50% 100%);
+      z-index: 8;
+    }
+
+    .top-drag {
+      cursor: grab;
+    }
+
+    .top-drag:active {
+      cursor: grabbing;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: nowrap;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0 6px;
+      background: white;
+    }
+
+    .selector-group,
+    .counter-group {
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 10px;
+      border-radius: 16px;
+      background: #f3f4f6;
+      border: 1px solid #d1d5db;
+    }
+
+    .selector {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    .selector input {
+      width: 15px;
+      height: 15px;
+      cursor: pointer;
+    }
+
+    .counter-box {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 2px 4px;
+      border-radius: 999px;
+      background: white;
+      border: 1px solid #d1d5db;
+    }
+
+    .counter-label {
+      min-width: 86px;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 800;
+      color: #111827;
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      min-width: 72px;
+      height: 36px;
+      padding: 0 12px;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+      background: #111827;
+      color: white;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.18);
+      white-space: nowrap;
+    }
+
+    button.light {
+      background: white;
+      color: #111827;
+      border: 2px solid #d1d5db;
+    }
+
+    .mini-btn {
+      min-width: 30px;
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      font-size: 18px;
+      line-height: 1;
+      box-shadow: none;
+      border-radius: 999px;
+    }
+
+    .graphbox {
+      border: 2px solid #e5e7eb;
+      border-radius: 0 0 14px 14px;
+      background: white;
+      overflow: hidden;
+      padding: 6px 8px 12px;
+      display: flex;
+      justify-content: center;
+    }
+
+    svg {
+      display: block;
+      width: 720px;
+      max-width: 100%;
+      height: auto;
+      touch-action: none;
+      user-select: none;
+    }
+
+    .tick-label-svg {
+      font-size: 13px;
+      fill: #374151;
+    }
+
+    .axis-label {
+      font-size: 18px;
+      font-weight: 900;
+      fill: #111827;
+    }
+
+    .place-label {
+      font-size: 15px;
+      font-weight: 900;
+    }
+
+    .drag-hit {
+      cursor: grab;
+    }
+
+    .drag-hit:active {
+      cursor: grabbing;
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="app" id="app">
+      <div class="board">
+        <div class="scene">
+          <div class="point point-a">粉嶺港鐵站</div>
+          <div class="point point-b">上水港鐵站</div>
+          <div class="time-box" id="currentTimeBox">09:00</div>
+
+          <div class="track-wrap" id="trackWrap">
+            <div class="track-line"></div>
+            <div class="mid-place">清河邨</div>
+            <div class="top-km-label">km</div>
+
+            <div class="runner runner-char top-drag" id="runnerIcon" data-top-key="runner">🏃‍♂️</div>
+            <div class="runner bike-char top-drag" id="bikeIcon" data-top-key="bike">🚴‍♂️</div>
+
+            <div class="track-dot runner-char top-drag" id="runnerDot" data-top-key="runner"></div>
+            <div class="track-dot bike-char top-drag" id="bikeDot" data-top-key="bike"></div>
+            <div class="track-dot combo top-drag" id="comboDot" data-top-key="combo"></div>
+          </div>
+        </div>
+
+        <div class="controls">
+          <div class="selector-group">
+            <label class="selector"><input type="checkbox" id="showRunner" checked> 跑步者</label>
+            <label class="selector"><input type="checkbox" id="showBike" checked> 單車</label>
+            <label class="selector"><input type="checkbox" id="showLineGhost" checked> 線上角色</label>
+          </div>
+
+          <button id="play">開始</button>
+          <button id="pause" class="light">暫停</button>
+          <button id="reset" class="light">重設</button>
+
+          <div class="counter-group">
+            <div class="counter-box">
+              <button class="mini-btn light" id="runnerMinus">－</button>
+              <div class="counter-label" id="runnerCountLabel">跑步者(0)點</div>
+              <button class="mini-btn light" id="runnerPlus">＋</button>
+            </div>
+            <div class="counter-box">
+              <button class="mini-btn light" id="bikeMinus">－</button>
+              <div class="counter-label" id="bikeCountLabel">單車(0)點</div>
+              <button class="mini-btn light" id="bikePlus">＋</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="graphbox">
+          <svg id="svg"></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const app = document.getElementById('app');
+
+    const trackWrap = document.getElementById('trackWrap');
+    const runnerIcon = document.getElementById('runnerIcon');
+    const bikeIcon = document.getElementById('bikeIcon');
+    const runnerDot = document.getElementById('runnerDot');
+    const bikeDot = document.getElementById('bikeDot');
+    const comboDot = document.getElementById('comboDot');
+    const currentTimeBox = document.getElementById('currentTimeBox');
+
+    const playBtn = document.getElementById('play');
+    const pauseBtn = document.getElementById('pause');
+    const resetBtn = document.getElementById('reset');
+    const showRunnerBox = document.getElementById('showRunner');
+    const showBikeBox = document.getElementById('showBike');
+    const showLineGhostBox = document.getElementById('showLineGhost');
+
+    const runnerMinusBtn = document.getElementById('runnerMinus');
+    const runnerPlusBtn = document.getElementById('runnerPlus');
+    const bikeMinusBtn = document.getElementById('bikeMinus');
+    const bikePlusBtn = document.getElementById('bikePlus');
+    const runnerCountLabel = document.getElementById('runnerCountLabel');
+    const bikeCountLabel = document.getElementById('bikeCountLabel');
+
+    const svg = document.getElementById('svg');
+    const NS = 'http://www.w3.org/2000/svg';
+
+    const square = 10;
+    const smallXCount = 40;    // 120 分鐘 / 3 分鐘
+    const smallYCount = 30;    // 3 公里 / 0.1 公里
+    const plotW = smallXCount * square;
+    const plotH = smallYCount * square;
+
+    const margin = { left: 160, right: 48, top: 18, bottom: 72 };
+    const W = margin.left + plotW + margin.right;
+    const H = margin.top + plotH + margin.bottom;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+    const maxMinutes = 120;
+    const maxDistance = 3;
+    const dragStep = 3;
+    const distStep = 0.1;
+    const playbackRate = 6;
+    const maxJointCount = 4;
+
+    const data = {
+      runner: {
+        color: '#ef4444',
+        visible: true,
+        icon: '🏃‍♂️',
+        points: [{ t: 0, d: 0 }, { t: 90, d: 3 }]
+      },
+      bike: {
+        color: '#2563eb',
+        visible: true,
+        icon: '🚴‍♂️',
+        points: [{ t: 0, d: 0 }, { t: 45, d: 3 }]
+      }
+    };
+
+    let dragging = null;      // { key, index }
+    let topDragging = null;   // runner / bike / combo
+    let topDragMode = 'time';  // time / start
+    let playing = false;
+    let currentMinutes = 0;
+    let animStart = 0;
+    let raf = null;
+
+    function fitToScreen() {
+      app.style.transform = 'scale(1)';
+      const naturalWidth = app.offsetWidth;
+      const naturalHeight = app.offsetHeight;
+      const padding = 16;
+      const scale = Math.min(
+        (window.innerWidth - padding) / naturalWidth,
+        (window.innerHeight - padding) / naturalHeight,
+        1
+      );
+      app.style.transform = `scale(${Math.max(0.45, scale)})`;
+    }
+
+    function makeSvg(tag, attrs = {}) {
+      const e = document.createElementNS(NS, tag);
+      Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v));
+      return e;
+    }
+
+    function x(mins) {
+      return margin.left + (mins / maxMinutes) * plotW;
+    }
+
+    function y(dist) {
+      return margin.top + plotH - (dist / maxDistance) * plotH;
+    }
+
+    function invX(px) {
+      return ((px - margin.left) / plotW) * maxMinutes;
+    }
+
+    function invY(py) {
+      return ((margin.top + plotH - py) / plotH) * maxDistance;
+    }
+
+    function snapMinutes(mins) {
+      const clamped = Math.max(0, Math.min(maxMinutes, mins));
+      return Math.round(clamped / dragStep) * dragStep;
+    }
+
+    function snapDistance(dist) {
+      const clamped = Math.max(0, Math.min(maxDistance, dist));
+      return Math.round(clamped / distStep) * distStep;
+    }
+
+    function timeLabel(totalMinutes) {
+      const baseHour = 9;
+      const mins = Math.max(0, Math.round(totalMinutes));
+      const h = baseHour + Math.floor(mins / 60);
+      const m = mins % 60;
+      return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+    }
+
+    function clearSvg() {
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+    }
+
+    function jointCount(key) {
+      return Math.max(0, data[key].points.length - 2);
+    }
+
+    function updateCounterLabels() {
+      runnerCountLabel.textContent = `跑步者(${jointCount('runner')})點`;
+      bikeCountLabel.textContent = `單車(${jointCount('bike')})點`;
+    }
+
+    function currentDistanceFor(key, mins = currentMinutes) {
+      const pts = data[key].points;
+
+      if (mins <= pts[0].t) return pts[0].d;
+
+      for (let i = 1; i < pts.length; i++) {
+        const p0 = pts[i - 1];
+        const p1 = pts[i];
+        if (mins <= p1.t) {
+          const duration = p1.t - p0.t;
+          if (duration <= 0) return p1.d;
+          const r = (mins - p0.t) / duration;
+          return p0.d + (p1.d - p0.d) * r;
+        }
+      }
+      return pts[pts.length - 1].d;
+    }
+
+    function timeForDistanceOnPath(key, targetDistance, referenceTime = currentMinutes) {
+      const pts = data[key].points;
+      let bestTime = pts[0].t;
+      let bestScore = Infinity;
+
+      for (let i = 1; i < pts.length; i++) {
+        const p0 = pts[i - 1];
+        const p1 = pts[i];
+        const dt = p1.t - p0.t;
+        const dd = p1.d - p0.d;
+        if (dt <= 0) continue;
+
+        let ratio;
+        if (Math.abs(dd) < 1e-6) {
+          ratio = 0.5;
+        } else {
+          ratio = (targetDistance - p0.d) / dd;
+          ratio = Math.max(0, Math.min(1, ratio));
+        }
+
+        const candidateDistance = p0.d + dd * ratio;
+        const candidateTime = p0.t + dt * ratio;
+        const distanceError = Math.abs(candidateDistance - targetDistance);
+        const timeError = Math.abs(candidateTime - referenceTime) / maxMinutes;
+        const score = distanceError * 100 + timeError;
+
+        if (score < bestScore) {
+          bestScore = score;
+          bestTime = candidateTime;
+        }
+      }
+
+      return Math.max(0, Math.min(visibleEndTime(), bestTime));
+    }
+
+    function endTimeFor(key) {
+      const pts = data[key].points;
+      return pts[pts.length - 1].t;
+    }
+
+    function visibleEndTime() {
+      const arr = [];
+      if (data.runner.visible) arr.push(endTimeFor('runner'));
+      if (data.bike.visible) arr.push(endTimeFor('bike'));
+      return arr.length ? Math.max(...arr) : 0;
+    }
+
+    function directionFor(key, mins = currentMinutes) {
+      const pts = data[key].points;
+      if (pts.length < 2) return 1;
+
+      for (let i = 1; i < pts.length; i++) {
+        if (mins <= pts[i].t + 1e-6) {
+          let delta = pts[i].d - pts[i - 1].d;
+          if (Math.abs(delta) > 1e-6) return delta > 0 ? 1 : -1;
+
+          for (let j = i - 1; j >= 1; j--) {
+            delta = pts[j].d - pts[j - 1].d;
+            if (Math.abs(delta) > 1e-6) return delta > 0 ? 1 : -1;
+          }
+          for (let j = i + 1; j < pts.length; j++) {
+            delta = pts[j].d - pts[j - 1].d;
+            if (Math.abs(delta) > 1e-6) return delta > 0 ? 1 : -1;
+          }
+          return 1;
+        }
+      }
+
+      const lastDelta = pts[pts.length - 1].d - pts[pts.length - 2].d;
+      return lastDelta >= 0 ? 1 : -1;
+    }
+
+    function topPointerDistance(evt) {
+      const rect = trackWrap.getBoundingClientRect();
+      const ratio = Math.max(0, Math.min(1, (evt.clientX - rect.left) / rect.width));
+      return snapDistance(ratio * maxDistance);
+    }
+
+    function timeFromTopPointer(evt, key) {
+      const rect = trackWrap.getBoundingClientRect();
+      const ratio = Math.max(0, Math.min(1, (evt.clientX - rect.left) / rect.width));
+      const targetDistance = ratio * maxDistance;
+
+      if (key === 'combo') {
+        const choices = [];
+        if (data.runner.visible) choices.push(timeForDistanceOnPath('runner', targetDistance));
+        if (data.bike.visible) choices.push(timeForDistanceOnPath('bike', targetDistance));
+        if (!choices.length) return currentMinutes;
+        return choices.reduce((a, b) => a + b, 0) / choices.length;
+      }
+
+      return timeForDistanceOnPath(key, targetDistance);
+    }
+
+    function setStartDistanceFromTopPointer(evt, key) {
+      const d = topPointerDistance(evt);
+
+      if (key === 'combo') {
+        if (data.runner.visible) data.runner.points[0].d = d;
+        if (data.bike.visible) data.bike.points[0].d = d;
+      } else {
+        data[key].points[0].d = d;
+      }
+
+      currentMinutes = 0;
+      redraw();
+    }
+
+    function drawTopTicks() {
+      trackWrap.querySelectorAll('.tick, .tick-label').forEach(n => n.remove());
+
+      for (let d = 0; d <= maxDistance + 0.0001; d += 0.5) {
+        const tick = document.createElement('div');
+        const isMajor = Math.abs(d - Math.round(d)) < 0.0001;
+        tick.className = 'tick' + (isMajor ? ' major' : '');
+        tick.style.left = `${(d / maxDistance) * 100}%`;
+        trackWrap.appendChild(tick);
+
+        if (isMajor) {
+          const label = document.createElement('div');
+          label.className = 'tick-label';
+          label.style.left = `${(d / maxDistance) * 100}%`;
+          label.textContent = String(d);
+          trackWrap.appendChild(label);
+        }
+      }
+    }
+
+    function drawDefs() {
+      const defs = makeSvg('defs');
+
+      const originGrad = makeSvg('linearGradient', {
+        id: 'originGrad',
+        x1: '0%', y1: '0%', x2: '100%', y2: '0%'
+      });
+      originGrad.appendChild(makeSvg('stop', { offset: '0%', 'stop-color': '#ef4444' }));
+      originGrad.appendChild(makeSvg('stop', { offset: '50%', 'stop-color': '#ef4444' }));
+      originGrad.appendChild(makeSvg('stop', { offset: '50%', 'stop-color': '#2563eb' }));
+      originGrad.appendChild(makeSvg('stop', { offset: '100%', 'stop-color': '#2563eb' }));
+      defs.appendChild(originGrad);
+
+      svg.appendChild(defs);
+    }
+
+    function drawGraph() {
+      clearSvg();
+      drawDefs();
+
+      const grid = makeSvg('g');
+      const axis = makeSvg('g');
+      const lines = makeSvg('g');
+      const ghosts = makeSvg('g', { id: 'lineGhosts' });
+      svg.appendChild(grid);
+      svg.appendChild(axis);
+      svg.appendChild(lines);
+      svg.appendChild(ghosts);
+
+      for (let i = 0; i <= smallXCount; i++) {
+        const isMajor = i % 5 === 0;
+        grid.appendChild(makeSvg('line', {
+          x1: margin.left + i * square,
+          y1: margin.top,
+          x2: margin.left + i * square,
+          y2: margin.top + plotH,
+          stroke: isMajor ? '#35aef3' : '#bfe8ff',
+          'stroke-width': isMajor ? 1.35 : 0.75
+        }));
+      }
+
+      for (let i = 0; i <= smallYCount; i++) {
+        const isMajor = i % 5 === 0;
+        grid.appendChild(makeSvg('line', {
+          x1: margin.left,
+          y1: margin.top + i * square,
+          x2: margin.left + plotW,
+          y2: margin.top + i * square,
+          stroke: isMajor ? '#35aef3' : '#bfe8ff',
+          'stroke-width': isMajor ? 1.35 : 0.75
+        }));
+      }
+
+      axis.appendChild(makeSvg('line', {
+        x1: margin.left, y1: y(0), x2: margin.left + plotW + 16, y2: y(0),
+        stroke: '#111827', 'stroke-width': 3
+      }));
+      axis.appendChild(makeSvg('polygon', {
+        points: `${margin.left + plotW + 16},${y(0)} ${margin.left + plotW - 2},${y(0) - 6} ${margin.left + plotW - 2},${y(0) + 6}`,
+        fill: '#111827'
+      }));
+
+      axis.appendChild(makeSvg('line', {
+        x1: margin.left, y1: y(0), x2: margin.left, y2: margin.top - 14,
+        stroke: '#111827', 'stroke-width': 3
+      }));
+      axis.appendChild(makeSvg('polygon', {
+        points: `${margin.left},${margin.top - 14} ${margin.left - 6},${margin.top} ${margin.left + 6},${margin.top}`,
+        fill: '#111827'
+      }));
+
+      for (let mins = 0; mins <= maxMinutes; mins += 15) {
+        axis.appendChild(makeSvg('line', {
+          x1: x(mins), y1: y(0), x2: x(mins), y2: y(0) + 7,
+          stroke: '#111827', 'stroke-width': 2
+        }));
+        const label = makeSvg('text', {
+          x: x(mins),
+          y: y(0) + 30,
+          'text-anchor': 'middle',
+          class: 'tick-label-svg'
+        });
+        label.textContent = timeLabel(mins);
+        axis.appendChild(label);
+      }
+
+      for (let dist = 0; dist <= maxDistance + 0.0001; dist += 0.5) {
+        axis.appendChild(makeSvg('line', {
+          x1: margin.left - 7, y1: y(dist), x2: margin.left, y2: y(dist),
+          stroke: '#111827', 'stroke-width': 2
+        }));
+        const label = makeSvg('text', {
+          x: margin.left - 12,
+          y: y(dist) + 5,
+          'text-anchor': 'end',
+          class: 'tick-label-svg'
+        });
+        label.textContent = dist % 1 === 0 ? String(dist.toFixed(0)) : String(dist);
+        axis.appendChild(label);
+      }
+
+      const xLabel = makeSvg('text', {
+        x: margin.left + plotW / 2,
+        y: H - 10,
+        'text-anchor': 'middle',
+        class: 'axis-label'
+      });
+      xLabel.textContent = '時間';
+      axis.appendChild(xLabel);
+
+      const yLabelChars = ['路', '程', '︵', '公', '里', '︶'];
+      const yStep = 22;
+      const yX = 8;
+      const yStart = margin.top + plotH / 2 - ((yLabelChars.length - 1) * yStep) / 2 + 4;
+      const yLabel = makeSvg('text', {
+        x: yX,
+        class: 'axis-label',
+        'text-anchor': 'middle'
+      });
+      yLabelChars.forEach((ch, i) => {
+        const tspan = makeSvg('tspan', {
+          x: yX,
+          y: yStart + i * yStep
+        });
+        tspan.textContent = ch;
+        yLabel.appendChild(tspan);
+      });
+      axis.appendChild(yLabel);
+
+      const aLabel = makeSvg('text', {
+        x: margin.left - 48,
+        y: y(0) + 6,
+        'text-anchor': 'end',
+        class: 'place-label',
+        fill: '#16a34a'
+      });
+      aLabel.textContent = '粉嶺港鐵站';
+      axis.appendChild(aLabel);
+
+      const cLabel = makeSvg('text', {
+        x: margin.left - 48,
+        y: y(2) + 6,
+        'text-anchor': 'end',
+        class: 'place-label',
+        fill: '#0f766e'
+      });
+      cLabel.textContent = '清河邨';
+      axis.appendChild(cLabel);
+
+      const bLabel = makeSvg('text', {
+        x: margin.left - 48,
+        y: y(maxDistance) + 6,
+        'text-anchor': 'end',
+        class: 'place-label',
+        fill: '#f59e0b'
+      });
+      bLabel.textContent = '上水港鐵站';
+      axis.appendChild(bLabel);
+
+      drawPath(lines, 'runner');
+      drawPath(lines, 'bike');
+
+      updateLineGhosts();
+    }
+
+    function drawPath(parent, key) {
+      const p = data[key];
+      if (!p.visible) return;
+
+      const ptsString = p.points.map(pt => `${x(pt.t)},${y(pt.d)}`).join(' ');
+      parent.appendChild(makeSvg('polyline', {
+        points: ptsString,
+        fill: 'none',
+        stroke: p.color,
+        'stroke-width': 1.8,
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round'
+      }));
+
+      for (let i = 0; i < p.points.length; i++) {
+        const pt = p.points[i];
+
+        parent.appendChild(makeSvg('circle', {
+          cx: x(pt.t),
+          cy: y(pt.d),
+          r: 4,
+          fill: p.color,
+          stroke: 'none'
+        }));
+
+        // i = 0 是線頭，只可沿縱軸上下移動，用來選擇出發位置。
+        parent.appendChild(makeSvg('circle', {
+          cx: x(pt.t),
+          cy: y(pt.d),
+          r: i === 0 ? 18 : 16,
+          fill: 'transparent',
+          'data-key': key,
+          'data-index': i,
+          class: 'drag-hit'
+        }));
+      }
+    }
+
+    function makeGhost(parent, key, cx, cy) {
+      const p = data[key];
+      const g = makeSvg('g', { opacity: '0.78' });
+
+      // 下方行程圖角色固定面向右
+      g.setAttribute('transform', `translate(${2 * cx} 0) scale(-1 1)`);
+
+      g.appendChild(makeSvg('circle', {
+        cx, cy, r: 11,
+        fill: 'white',
+        'fill-opacity': '0.72',
+        stroke: p.color,
+        'stroke-width': 2
+      }));
+
+      const label = makeSvg('text', {
+        x: cx,
+        y: cy + 4,
+        'text-anchor': 'middle',
+        'font-size': 14
+      });
+      label.textContent = p.icon;
+      g.appendChild(label);
+
+      parent.appendChild(g);
+    }
+
+    function updateLineGhosts() {
+      const ghostLayer = document.getElementById('lineGhosts');
+      if (!ghostLayer) return;
+      ghostLayer.innerHTML = '';
+
+      if (!showLineGhostBox.checked) return;
+
+      for (const key of ['runner', 'bike']) {
+        const p = data[key];
+        if (!p.visible) continue;
+
+        const time = Math.min(currentMinutes, endTimeFor(key));
+        const dist = currentDistanceFor(key, time);
+        makeGhost(ghostLayer, key, x(time), y(dist));
+      }
+    }
+
+    function updateCurrentTimeDisplay() {
+      currentTimeBox.textContent = timeLabel(currentMinutes);
+    }
+
+    function updateTopIcons(mins = currentMinutes) {
+      const trackWidth = trackWrap.clientWidth;
+      const runnerVisible = data.runner.visible;
+      const bikeVisible = data.bike.visible;
+
+      const runnerDist = currentDistanceFor('runner', Math.min(mins, endTimeFor('runner')));
+      const bikeDist = currentDistanceFor('bike', Math.min(mins, endTimeFor('bike')));
+
+      const runnerLeft = (runnerDist / maxDistance) * trackWidth;
+      const bikeLeft = (bikeDist / maxDistance) * trackWidth;
+
+      runnerIcon.style.display = runnerVisible ? 'grid' : 'none';
+      bikeIcon.style.display = bikeVisible ? 'grid' : 'none';
+
+      runnerDot.style.display = 'none';
+      bikeDot.style.display = 'none';
+      comboDot.style.display = 'none';
+
+      if (runnerVisible) {
+        runnerIcon.style.left = `${runnerLeft}px`;
+        runnerIcon.style.transform = `translate(-50%, -50%) scaleX(${directionFor('runner', mins) >= 0 ? -1 : 1})`;
+      }
+
+      if (bikeVisible) {
+        bikeIcon.style.left = `${bikeLeft}px`;
+        bikeIcon.style.transform = `translate(-50%, -50%) scaleX(${directionFor('bike', mins) >= 0 ? -1 : 1})`;
+      }
+
+      if (runnerVisible && bikeVisible) {
+        const diff = Math.abs(runnerLeft - bikeLeft);
+        if (diff < 0.5) {
+          comboDot.style.display = 'block';
+          comboDot.style.left = `${(runnerLeft + bikeLeft) / 2}px`;
+        } else {
+          runnerDot.style.display = 'block';
+          bikeDot.style.display = 'block';
+          runnerDot.style.left = `${runnerLeft}px`;
+          bikeDot.style.left = `${bikeLeft}px`;
+        }
+      } else if (runnerVisible) {
+        runnerDot.style.display = 'block';
+        runnerDot.style.left = `${runnerLeft}px`;
+      } else if (bikeVisible) {
+        bikeDot.style.display = 'block';
+        bikeDot.style.left = `${bikeLeft}px`;
+      }
+
+      updateCurrentTimeDisplay();
+      updateLineGhosts();
+    }
+
+    function syncVisibility() {
+      data.runner.visible = showRunnerBox.checked;
+      data.bike.visible = showBikeBox.checked;
+    }
+
+    function redraw() {
+      syncVisibility();
+      updateCounterLabels();
+      drawTopTicks();
+      drawGraph();
+      updateTopIcons(currentMinutes);
+      requestAnimationFrame(fitToScreen);
+    }
+
+    function svgPoint(evt) {
+      const pt = svg.createSVGPoint();
+      pt.x = evt.clientX;
+      pt.y = evt.clientY;
+      return pt.matrixTransform(svg.getScreenCTM().inverse());
+    }
+
+    function clampPointWithinNeighbors(key, index, newT, newD) {
+      const pts = data[key].points;
+
+      if (index === 0) {
+        return {
+          t: 0,
+          d: snapDistance(newD)
+        };
+      }
+
+      const prev = pts[index - 1];
+      const next = pts[index + 1];
+
+      let minT = prev.t + dragStep;
+      let maxT = next ? next.t - dragStep : maxMinutes;
+
+      if (maxT < minT) maxT = minT;
+
+      return {
+        t: Math.max(minT, Math.min(maxT, snapMinutes(newT))),
+        d: snapDistance(newD)
+      };
+    }
+
+    function addJointPoint(key) {
+      if (jointCount(key) >= maxJointCount) return;
+
+      const pts = data[key].points;
+      let bestIdx = 1;
+      let bestScore = -1;
+
+      for (let i = 1; i < pts.length; i++) {
+        const p0 = pts[i - 1];
+        const p1 = pts[i];
+        const dt = p1.t - p0.t;
+        if (dt > bestScore) {
+          bestScore = dt;
+          bestIdx = i;
+        }
+      }
+
+      const p0 = pts[bestIdx - 1];
+      const p1 = pts[bestIdx];
+
+      if (p1.t - p0.t < dragStep * 2) return;
+
+      let newT = snapMinutes((p0.t + p1.t) / 2);
+      if (newT <= p0.t) newT = p0.t + dragStep;
+      if (newT >= p1.t) newT = p1.t - dragStep;
+
+      let newD = snapDistance((p0.d + p1.d) / 2);
+      pts.splice(bestIdx, 0, { t: newT, d: newD });
+
+      currentMinutes = Math.min(currentMinutes, visibleEndTime());
+      redraw();
+    }
+
+    function removeJointPoint(key) {
+      if (jointCount(key) <= 0) return;
+      const pts = data[key].points;
+      pts.splice(pts.length - 2, 1);
+      currentMinutes = Math.min(currentMinutes, visibleEndTime());
+      redraw();
+    }
+
+    svg.addEventListener('pointerdown', evt => {
+      const key = evt.target.getAttribute('data-key');
+      const index = evt.target.getAttribute('data-index');
+      if (!key || index === null) return;
+
+      dragging = { key, index: Number(index) };
+      playing = false;
+      cancelAnimationFrame(raf);
+      svg.setPointerCapture(evt.pointerId);
+    });
+
+    svg.addEventListener('pointermove', evt => {
+      if (!dragging) return;
+
+      const p = svgPoint(evt);
+      const adjusted = clampPointWithinNeighbors(
+        dragging.key,
+        dragging.index,
+        invX(p.x),
+        invY(p.y)
+      );
+
+      data[dragging.key].points[dragging.index] = adjusted;
+      currentMinutes = Math.min(currentMinutes, visibleEndTime());
+      redraw();
+    });
+
+    function stopDragging(evt) {
+      dragging = null;
+      try { svg.releasePointerCapture(evt.pointerId); } catch (e) {}
+    }
+
+    svg.addEventListener('pointerup', stopDragging);
+    svg.addEventListener('pointercancel', () => { dragging = null; });
+
+    trackWrap.addEventListener('pointerdown', evt => {
+      const key = evt.target.getAttribute('data-top-key');
+      if (!key) return;
+
+      topDragging = key;
+      topDragMode = currentMinutes <= 0.01 ? 'start' : 'time';
+      playing = false;
+      cancelAnimationFrame(raf);
+      try { trackWrap.setPointerCapture(evt.pointerId); } catch (e) {}
+
+      if (topDragMode === 'start') {
+        setStartDistanceFromTopPointer(evt, key);
+      } else {
+        currentMinutes = timeFromTopPointer(evt, key);
+        updateTopIcons(currentMinutes);
+      }
+    });
+
+    trackWrap.addEventListener('pointermove', evt => {
+      if (!topDragging) return;
+
+      if (topDragMode === 'start') {
+        setStartDistanceFromTopPointer(evt, topDragging);
+      } else {
+        currentMinutes = timeFromTopPointer(evt, topDragging);
+        updateTopIcons(currentMinutes);
+      }
+    });
+
+    trackWrap.addEventListener('pointerup', evt => {
+      topDragging = null;
+      topDragMode = 'time';
+      try { trackWrap.releasePointerCapture(evt.pointerId); } catch (e) {}
+    });
+
+    trackWrap.addEventListener('pointercancel', () => {
+      topDragging = null;
+      topDragMode = 'time';
+    });
+
+    function play() {
+      const endTime = visibleEndTime();
+      if (endTime <= 0) return;
+
+      playing = true;
+      animStart = performance.now() - (currentMinutes / playbackRate) * 1000;
+
+      function step(now) {
+        if (!playing) return;
+        currentMinutes = ((now - animStart) / 1000) * playbackRate;
+        if (currentMinutes >= endTime) {
+          currentMinutes = endTime;
+          playing = false;
+        }
+        updateTopIcons(currentMinutes);
+        if (playing) raf = requestAnimationFrame(step);
+      }
+      raf = requestAnimationFrame(step);
+    }
+
+    playBtn.addEventListener('click', () => {
+      const endTime = visibleEndTime();
+      if (endTime <= 0) return;
+      if (currentMinutes >= endTime) currentMinutes = 0;
+      play();
+    });
+
+    pauseBtn.addEventListener('click', () => {
+      playing = false;
+      cancelAnimationFrame(raf);
+    });
+
+    resetBtn.addEventListener('click', () => {
+      playing = false;
+      currentMinutes = 0;
+      cancelAnimationFrame(raf);
+      updateTopIcons(0);
+      updateLineGhosts();
+    });
+
+    showRunnerBox.addEventListener('change', () => {
+      playing = false;
+      cancelAnimationFrame(raf);
+      redraw();
+    });
+
+    showBikeBox.addEventListener('change', () => {
+      playing = false;
+      cancelAnimationFrame(raf);
+      redraw();
+    });
+
+    showLineGhostBox.addEventListener('change', () => {
+      updateLineGhosts();
+    });
+
+    runnerPlusBtn.addEventListener('click', () => addJointPoint('runner'));
+    runnerMinusBtn.addEventListener('click', () => removeJointPoint('runner'));
+    bikePlusBtn.addEventListener('click', () => addJointPoint('bike'));
+    bikeMinusBtn.addEventListener('click', () => removeJointPoint('bike'));
+
+    window.addEventListener('resize', () => {
+      fitToScreen();
+      updateTopIcons(currentMinutes);
+    });
+
+    redraw();
+    requestAnimationFrame(fitToScreen);
+  </script>
+</body>
+</html>
