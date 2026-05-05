@@ -1,0 +1,1039 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>正方體／長方體體積互動模擬器</title>
+  <style>
+    :root {
+      --page-bg: #f4f7f9;
+      --panel-bg: #ffffff;
+      --primary: #0b72ff;
+      --primary-dark: #0056b3;
+      --success: #1f9d55;
+      --danger: #dc3545;
+      --warning: #d97706;
+      --info: #0ea5b7;
+      --purple: #7c4dff;
+      --muted: #607d8b;
+      --line: #d9e2ec;
+      --text: #263238;
+      --block-face: rgba(255, 193, 7, 0.88);
+      --block-border: rgba(149, 104, 0, 0.58);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 14px;
+      background: var(--page-bg);
+      color: var(--text);
+      font-family: "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    #app-container {
+      width: min(1380px, 100%);
+      margin: 0 auto;
+      padding: 16px 18px 18px;
+      background: var(--panel-bg);
+      border-radius: 20px;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
+      display: grid;
+      gap: 14px;
+    }
+
+    .page-header { text-align: center; }
+
+    .page-header h1 {
+      margin: 0 0 6px;
+      font-size: clamp(1.25rem, 2.2vw, 1.8rem);
+      line-height: 1.25;
+    }
+
+    .page-header p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.45;
+    }
+
+    .workspace-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.7fr) minmax(330px, 0.92fr);
+      gap: 14px;
+      align-items: start;
+    }
+
+    .left-column,
+    .right-column {
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .panel {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+    }
+
+    .panel h2 {
+      margin: 0 0 12px;
+      font-size: 1.1rem;
+    }
+
+    .settings-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(130px, 1fr));
+      gap: 10px;
+    }
+
+    .input-group { display: grid; gap: 6px; }
+
+    .input-group label {
+      font-weight: 700;
+      font-size: 0.94rem;
+    }
+
+    .input-group input {
+      width: 100%;
+      padding: 9px 10px;
+      border: 2px solid #cfd8dc;
+      border-radius: 10px;
+      text-align: center;
+      font-size: 1rem;
+      outline: none;
+    }
+
+    .input-group input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(11, 114, 255, 0.12);
+    }
+
+    .action-row,
+    .control-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .action-row { margin-top: 12px; }
+    .control-row { justify-content: center; }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.15s, filter 0.15s, opacity 0.15s;
+    }
+
+    button:hover:not(:disabled) {
+      filter: brightness(0.96);
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    #generate-btn { background: var(--primary); color: #fff; }
+    #cube-preset-btn { background: #eef5ff; color: var(--primary-dark); }
+    #add-btn { background: var(--success); color: #fff; }
+    #layer-btn { background: var(--info); color: #fff; }
+    #fill-btn { background: var(--purple); color: #fff; }
+    #reset-btn { background: var(--danger); color: #fff; }
+    #view-reset-btn { background: #546e7a; color: #fff; }
+
+    #settings-feedback {
+      margin: 8px 0 0;
+      min-height: 26px;
+      line-height: 1.35;
+      font-weight: 700;
+      text-align: center;
+      font-size: 0.92rem;
+    }
+
+    .settings-panel {
+      padding: 10px 12px;
+    }
+
+    .settings-panel h2 {
+      margin-bottom: 8px;
+      font-size: 1rem;
+    }
+
+    .settings-panel .settings-grid {
+      gap: 8px;
+    }
+
+    .settings-panel .input-group {
+      gap: 4px;
+    }
+
+    .settings-panel .input-group label {
+      font-size: 0.86rem;
+    }
+
+    .settings-panel .input-group input {
+      padding: 6px 8px;
+      border-radius: 9px;
+      font-size: 0.98rem;
+    }
+
+    .settings-panel .action-row {
+      margin-top: 8px;
+      gap: 8px;
+    }
+
+    .settings-panel button {
+      padding: 8px 10px;
+      border-radius: 9px;
+      font-size: 0.92rem;
+    }
+
+    .math-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(120px, 1fr));
+      gap: 10px;
+    }
+
+    .math-card {
+      min-height: 68px;
+      padding: 8px;
+      border: 1px solid #e3ecf5;
+      border-radius: 12px;
+      background: #fbfdff;
+      text-align: center;
+      display: grid;
+      align-content: center;
+    }
+
+    .math-card .label {
+      margin-bottom: 4px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .math-card .value {
+      color: var(--primary-dark);
+      font-size: 1.12rem;
+      font-weight: 800;
+      line-height: 1.35;
+    }
+
+    .math-note {
+      margin: 10px 0 0;
+      color: var(--text);
+      font-size: 0.92rem;
+      line-height: 1.5;
+    }
+
+    .usage-explanation {
+      display: grid;
+      gap: 6px;
+    }
+
+    .usage-explanation ol {
+      margin: 0;
+      padding-left: 1.25rem;
+    }
+
+    .usage-explanation li {
+      margin: 3px 0;
+    }
+
+    .usage-rate-line {
+      padding-top: 2px;
+      color: var(--primary-dark);
+      font-weight: 800;
+    }
+
+    .wrong-calc {
+      margin-top: 6px;
+      padding: 8px 10px;
+      border: 1px solid #fecdd3;
+      border-radius: 12px;
+      background: #fff1f2;
+      color: #9f1239;
+    }
+
+    .wrong-calc strong {
+      color: #be123c;
+    }
+
+    #simulation-panel {
+      min-height: 610px;
+      padding: 14px 14px 12px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+      display: grid;
+      gap: 8px;
+      justify-items: center;
+      overflow: hidden;
+    }
+
+    .scene-wrap {
+      width: min(100%, 900px);
+      display: grid;
+      justify-items: center;
+    }
+
+    .scene {
+      width: min(100%, 820px);
+      height: 500px;
+      position: relative;
+      perspective: 1300px;
+      cursor: grab;
+      touch-action: none;
+      user-select: none;
+      overflow: visible;
+    }
+
+    .scene:focus-visible {
+      outline: 3px solid rgba(11, 114, 255, 0.25);
+      outline-offset: 6px;
+      border-radius: 8px;
+    }
+
+    #box-world {
+      position: absolute;
+      left: 50%;
+      top: 49%;
+      transform-style: preserve-3d;
+      will-change: transform;
+    }
+
+    .shell-face,
+    .placed-block,
+    .dim3d,
+    .dim-line,
+    .dim-tag {
+      position: absolute;
+      transform-style: preserve-3d;
+    }
+
+    .shell-face {
+      left: 0;
+      top: 0;
+      background: rgba(11, 114, 255, 0.045);
+      border: 2px solid var(--primary);
+      box-sizing: border-box;
+      pointer-events: none;
+    }
+
+    .placed-block {
+      left: 0;
+      top: 0;
+      pointer-events: none;
+      transition: transform 0.34s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .placed-block .face {
+      position: absolute;
+      left: 0;
+      top: 0;
+      background: var(--block-face);
+      border: 1px solid var(--block-border);
+      box-sizing: border-box;
+    }
+
+    .dim-line {
+      left: 0;
+      top: 0;
+      height: 2px;
+      background: rgba(50, 50, 50, 0.94);
+      transform-origin: left center;
+      pointer-events: none;
+    }
+
+    .dim-line::before,
+    .dim-line::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      width: 10px;
+      height: 10px;
+      border-top: 2px solid rgba(50, 50, 50, 0.95);
+      border-right: 2px solid rgba(50, 50, 50, 0.95);
+      background: transparent;
+      box-sizing: border-box;
+    }
+
+    .dim-line::before {
+      left: -1px;
+      transform: translate(-50%, -50%) rotate(-135deg);
+    }
+
+    .dim-line::after {
+      right: -1px;
+      transform: translate(50%, -50%) rotate(45deg);
+    }
+
+    .dim-tag {
+      left: 0;
+      top: 0;
+      padding: 2px 8px;
+      background: rgba(255, 255, 255, 0.98);
+      border: 1px solid #dbe5f0;
+      border-radius: 999px;
+      color: #263238;
+      font-size: 14px;
+      font-weight: 800;
+      white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      pointer-events: none;
+    }
+
+    .drag-hint {
+      color: var(--muted);
+      font-size: 0.92rem;
+      text-align: center;
+    }
+
+    #controls {
+      display: grid;
+      gap: 10px;
+      padding: 10px 8px 0;
+    }
+
+    #controls.disabled {
+      opacity: 0.55;
+      pointer-events: none;
+    }
+
+    #counter {
+      min-height: 32px;
+      font-size: 1.12rem;
+      font-weight: 800;
+      text-align: center;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 1100px) {
+      .workspace-grid { grid-template-columns: 1fr; }
+      #simulation-panel { min-height: 520px; }
+      .scene { width: min(100%, 760px); height: 430px; }
+    }
+
+    @media (max-width: 720px) {
+      body { padding: 8px; }
+      #app-container { padding: 12px; }
+      .settings-grid { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+      .math-grid { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+      #simulation-panel { min-height: 430px; }
+      .scene { width: min(100%, 560px); height: 340px; }
+      .control-row button, .action-row button { flex: 1 1 140px; }
+    }
+
+    @media (max-width: 420px) {
+      .settings-grid { grid-template-columns: 1fr; }
+      .math-grid { grid-template-columns: 1fr; }
+      #simulation-panel { min-height: 360px; }
+      .scene { width: min(100%, 340px); height: 280px; }
+    }
+  </style>
+</head>
+<body>
+  <main id="app-container">
+    <header class="page-header">
+      <h1>正方體／長方體體積互動模擬器</h1>
+      <p>可自訂大盒子的闊、高、長，以及小正方體積木邊長；拖曳圖形可從不同角度觀察，並用逐個、逐層或一鍵方式填滿盒子。</p>
+    </header>
+
+    <section class="workspace-grid">
+      <div class="left-column">
+        <section id="simulation-panel" aria-label="3D 長方體模擬器">
+          <div class="scene-wrap">
+            <div class="scene" tabindex="0" aria-label="可拖曳旋轉的大盒子">
+              <div id="box-world"></div>
+            </div>
+          </div>
+          <div class="drag-hint">提示：用滑鼠或手指拖曳圖形，可轉換觀察角度；尺寸標示會跟著圖形一起轉動。</div>
+        </section>
+
+        <section id="controls" class="disabled" aria-label="模擬控制">
+          <div id="counter" aria-live="polite">請先生成題目</div>
+          <div class="control-row">
+            <button id="add-btn" type="button" disabled>＋ 加 1 個</button>
+            <button id="layer-btn" type="button" disabled>＋ 鋪滿 1 層</button>
+            <button id="fill-btn" type="button" disabled>一鍵填滿</button>
+            <button id="reset-btn" type="button" disabled>🔄 重設積木</button>
+            <button id="view-reset-btn" type="button" disabled>↺ 重設視角</button>
+          </div>
+        </section>
+      </div>
+
+      <div class="right-column">
+        <section class="panel settings-panel" aria-labelledby="settings-title">
+          <h2 id="settings-title">教學設定</h2>
+          <div class="settings-grid">
+            <div class="input-group">
+              <label for="box-width-input">大盒子闊（cm）</label>
+              <input type="number" id="box-width-input" value="20" min="1" step="1" inputmode="numeric">
+            </div>
+            <div class="input-group">
+              <label for="box-height-input">大盒子高（cm）</label>
+              <input type="number" id="box-height-input" value="20" min="1" step="1" inputmode="numeric">
+            </div>
+            <div class="input-group">
+              <label for="box-length-input">大盒子長（cm）</label>
+              <input type="number" id="box-length-input" value="20" min="1" step="1" inputmode="numeric">
+            </div>
+            <div class="input-group">
+              <label for="block-side-input">小積木邊長（cm）</label>
+              <input type="number" id="block-side-input" value="5" min="1" step="1" inputmode="numeric">
+            </div>
+          </div>
+          <div class="action-row">
+            <button id="generate-btn" type="button">生成新題目</button>
+            <button id="cube-preset-btn" type="button">設成正方體</button>
+          </div>
+          <p id="settings-feedback" aria-live="polite"></p>
+        </section>
+
+        <section class="panel" aria-labelledby="math-title">
+          <h2 id="math-title">數學關係</h2>
+          <div class="math-grid">
+            <div class="math-card"><div class="label">闊向可放</div><div class="value" id="count-width">—</div></div>
+            <div class="math-card"><div class="label">高向可放</div><div class="value" id="count-height">—</div></div>
+            <div class="math-card"><div class="label">長向可放</div><div class="value" id="count-length">—</div></div>
+            <div class="math-card"><div class="label">每層積木數</div><div class="value" id="count-layer">—</div></div>
+            <div class="math-card"><div class="label">最多積木數</div><div class="value" id="count-total">—</div></div>
+            <div class="math-card"><div class="label">空間利用率</div><div class="value" id="usage-rate">—</div></div>
+          </div>
+          <p class="math-note" id="math-note">請先生成題目。</p>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const boxWidthInput = document.getElementById('box-width-input');
+      const boxHeightInput = document.getElementById('box-height-input');
+      const boxLengthInput = document.getElementById('box-length-input');
+      const blockSideInput = document.getElementById('block-side-input');
+      const generateBtn = document.getElementById('generate-btn');
+      const cubePresetBtn = document.getElementById('cube-preset-btn');
+      const settingsFeedback = document.getElementById('settings-feedback');
+      const boxWorld = document.getElementById('box-world');
+      const scene = document.querySelector('.scene');
+      const controls = document.getElementById('controls');
+      const counterDisplay = document.getElementById('counter');
+      const addBtn = document.getElementById('add-btn');
+      const layerBtn = document.getElementById('layer-btn');
+      const fillBtn = document.getElementById('fill-btn');
+      const resetBtn = document.getElementById('reset-btn');
+      const viewResetBtn = document.getElementById('view-reset-btn');
+      const countWidth = document.getElementById('count-width');
+      const countHeight = document.getElementById('count-height');
+      const countLength = document.getElementById('count-length');
+      const countLayer = document.getElementById('count-layer');
+      const countTotal = document.getElementById('count-total');
+      const usageRate = document.getElementById('usage-rate');
+      const mathNote = document.getElementById('math-note');
+
+      const MODEL_MAX_PX = 230;
+      const MAX_RENDERED_BLOCKS = 500;
+      const BLOCK_HTML = '<div class="face front"></div><div class="face back"></div><div class="face right"></div><div class="face left"></div><div class="face top"></div><div class="face bottom"></div>';
+
+      let gameState = { isGenerated: false };
+      let pendingTimers = [];
+      let rotationFrame = null;
+      let isDragging = false;
+      let previousPointerPosition = { x: 0, y: 0 };
+      let currentRotation = { x: -18, y: 34 };
+
+      function parsePositiveInteger(inputElement) {
+        const value = Number(inputElement.value);
+        return Number.isInteger(value) && value > 0 ? value : null;
+      }
+
+      function formatNumber(value) {
+        return Number.isInteger(value)
+          ? value.toLocaleString('zh-Hant')
+          : Number(value.toFixed(3)).toLocaleString('zh-Hant');
+      }
+
+      function setFeedback(type, html) {
+        const colorMap = {
+          success: '#1f9d55',
+          warning: '#d97706',
+          error: '#dc3545',
+          info: '#0b72ff'
+        };
+        settingsFeedback.style.color = colorMap[type] || colorMap.info;
+        settingsFeedback.innerHTML = html;
+      }
+
+      function clearPendingTimers() {
+        pendingTimers.forEach(window.clearTimeout);
+        pendingTimers = [];
+      }
+
+      function resetCountersDisplay() {
+        countWidth.textContent = '—';
+        countHeight.textContent = '—';
+        countLength.textContent = '—';
+        countLayer.textContent = '—';
+        countTotal.textContent = '—';
+        usageRate.textContent = '—';
+        mathNote.textContent = '請先生成題目。';
+      }
+
+      function disableSimulation() {
+        clearPendingTimers();
+        gameState = { isGenerated: false };
+        boxWorld.innerHTML = '';
+        controls.classList.add('disabled');
+        addBtn.disabled = true;
+        layerBtn.disabled = true;
+        fillBtn.disabled = true;
+        resetBtn.disabled = true;
+        viewResetBtn.disabled = true;
+        counterDisplay.textContent = '請先生成題目';
+        resetCountersDisplay();
+      }
+
+      function updateWorldRotation() {
+        boxWorld.style.transform = `translateZ(0) rotateX(${currentRotation.x}deg) rotateY(${currentRotation.y}deg)`;
+      }
+
+      function scheduleRotationUpdate() {
+        if (rotationFrame !== null) return;
+        rotationFrame = requestAnimationFrame(() => {
+          updateWorldRotation();
+          rotationFrame = null;
+        });
+      }
+
+      function setCubePreset() {
+        const value = boxWidthInput.value || boxHeightInput.value || boxLengthInput.value || '20';
+        boxWidthInput.value = value;
+        boxHeightInput.value = value;
+        boxLengthInput.value = value;
+      }
+
+      function createFace(width, height, transform) {
+        const face = document.createElement('div');
+        face.className = 'shell-face';
+        face.style.width = `${width}px`;
+        face.style.height = `${height}px`;
+        face.style.left = `${-width / 2}px`;
+        face.style.top = `${-height / 2}px`;
+        face.style.transform = transform;
+        return face;
+      }
+
+      function buildShell() {
+        const { boxPxWidth: w, boxPxHeight: h, boxPxLength: l } = gameState;
+        const fragment = document.createDocumentFragment();
+
+        fragment.appendChild(createFace(w, h, `translateZ(${l / 2}px)`));
+        fragment.appendChild(createFace(w, h, `rotateY(180deg) translateZ(${l / 2}px)`));
+        fragment.appendChild(createFace(l, h, `rotateY(90deg) translateZ(${w / 2}px)`));
+        fragment.appendChild(createFace(l, h, `rotateY(-90deg) translateZ(${w / 2}px)`));
+        fragment.appendChild(createFace(w, l, `rotateX(90deg) translateZ(${h / 2}px)`));
+        fragment.appendChild(createFace(w, l, `rotateX(-90deg) translateZ(${h / 2}px)`));
+
+        boxWorld.appendChild(fragment);
+      }
+
+      function buildDimensionLabel({ axis, lineLength, text, offsetX = 0, offsetY = 0, offsetZ = 0, tagOffsetX = 0, tagOffsetY = 0 }) {
+        const group = document.createElement('div');
+        group.className = 'dim3d';
+
+        let axisRotate = '';
+        if (axis === 'y') axisRotate = 'rotateZ(90deg)';
+        if (axis === 'z') axisRotate = 'rotateY(90deg)';
+        group.style.transform = `translate3d(${offsetX}px, ${offsetY}px, ${offsetZ}px) ${axisRotate}`;
+
+        const arrowCompensation = 14;
+        const effectiveLineLength = Math.max(12, lineLength - arrowCompensation);
+
+        const line = document.createElement('div');
+        line.className = 'dim-line';
+        line.style.width = `${effectiveLineLength}px`;
+        line.style.transform = `translate(${-effectiveLineLength / 2}px, 0)`;
+
+        const tagTransform = `translate(calc(-50% + ${tagOffsetX}px), calc(-50% + ${tagOffsetY}px))`;
+
+        const frontTag = document.createElement('div');
+        frontTag.className = 'dim-tag dim-tag-front';
+        frontTag.textContent = text;
+        frontTag.style.transform = tagTransform;
+
+        // 背面標籤：當盒子轉到後方時，原本標籤會因 backface-visibility 而隱藏；
+        // 加一個反向標籤，讓學生從背面觀察時仍可讀到長、闊、高數值。
+        const backTag = document.createElement('div');
+        backTag.className = 'dim-tag dim-tag-back';
+        backTag.textContent = text;
+        backTag.style.transform = `${tagTransform} rotateY(180deg)`;
+
+        group.appendChild(line);
+        group.appendChild(frontTag);
+        group.appendChild(backTag);
+        boxWorld.appendChild(group);
+      }
+
+      function buildDimensionLabels() {
+        const { boxPxWidth: w, boxPxHeight: h, boxPxLength: l, boxWidth, boxHeight, boxLength } = gameState;
+
+        buildDimensionLabel({
+          axis: 'x',
+          lineLength: w,
+          text: `闊：${boxWidth} cm`,
+          offsetY: h / 2 + 18,
+          offsetZ: l / 2 + 8,
+          tagOffsetY: 24
+        });
+
+        buildDimensionLabel({
+          axis: 'y',
+          lineLength: h,
+          text: `高：${boxHeight} cm`,
+          offsetX: -(w / 2 + 20),
+          offsetZ: l / 2 + 8,
+          tagOffsetY: 22
+        });
+
+        // 「長」的尺寸線刻意放近圖形右邊底邊；標籤放在線的外側。
+        // 視覺順序：圖形 → 長度線 → 長度標示。
+        buildDimensionLabel({
+          axis: 'z',
+          lineLength: l,
+          text: `長：${boxLength} cm`,
+          offsetX: w / 2 + 4,
+          offsetY: h / 2 + 16,
+          offsetZ: 0,
+          tagOffsetY: 30
+        });
+      }
+
+      function styleBlockFaces(block, size) {
+        block.querySelectorAll('.face').forEach(face => {
+          face.style.width = `${size}px`;
+          face.style.height = `${size}px`;
+        });
+        block.querySelector('.front').style.transform = `rotateY(0deg) translateZ(${size / 2}px)`;
+        block.querySelector('.back').style.transform = `rotateY(180deg) translateZ(${size / 2}px)`;
+        block.querySelector('.right').style.transform = `rotateY(90deg) translateZ(${size / 2}px)`;
+        block.querySelector('.left').style.transform = `rotateY(-90deg) translateZ(${size / 2}px)`;
+        block.querySelector('.top').style.transform = `rotateX(90deg) translateZ(${size / 2}px)`;
+        block.querySelector('.bottom').style.transform = `rotateX(-90deg) translateZ(${size / 2}px)`;
+      }
+
+      function calculateBlockPositions() {
+        const { countX, countY, countZ, blockPx, boxPxWidth: w, boxPxHeight: h, boxPxLength: l } = gameState;
+        const positions = [];
+
+        for (let y = 0; y < countY; y++) {
+          for (let z = 0; z < countZ; z++) {
+            for (let x = 0; x < countX; x++) {
+              positions.push({
+                x: -w / 2 + blockPx / 2 + x * blockPx,
+                y: h / 2 - blockPx / 2 - y * blockPx,
+                z: -l / 2 + blockPx / 2 + z * blockPx
+              });
+            }
+          }
+        }
+
+        gameState.blockPositions = positions;
+      }
+
+      function createBlockElement(pos, animate = true) {
+        const block = document.createElement('div');
+        block.className = 'placed-block';
+        block.innerHTML = BLOCK_HTML;
+        block.style.width = `${gameState.blockPx}px`;
+        block.style.height = `${gameState.blockPx}px`;
+        styleBlockFaces(block, gameState.blockPx);
+
+        const finalTransform = `translate3d(${pos.x}px, ${pos.y}px, ${pos.z}px) translate(-50%, -50%)`;
+        if (animate) {
+          block.style.transform = `translate3d(${pos.x}px, ${pos.y - Math.min(130, gameState.boxPxHeight)}px, ${pos.z}px) translate(-50%, -50%) scale(0.6)`;
+          boxWorld.appendChild(block);
+          requestAnimationFrame(() => {
+            block.style.transform = `${finalTransform} scale(1)`;
+          });
+        } else {
+          block.style.transition = 'none';
+          block.style.transform = finalTransform;
+          boxWorld.appendChild(block);
+        }
+      }
+
+      function updateMathPanel() {
+        countWidth.textContent = `${gameState.countX} 個`;
+        countHeight.textContent = `${gameState.countY} 個`;
+        countLength.textContent = `${gameState.countZ} 個`;
+        countLayer.textContent = `${gameState.countX} × ${gameState.countZ} = ${gameState.blocksPerLayer}`;
+        countTotal.textContent = `${gameState.countX} × ${gameState.countY} × ${gameState.countZ} = ${gameState.totalBlocks}`;
+        usageRate.textContent = `${gameState.usageRate.toFixed(1)}%`;
+
+        const blockVolume = gameState.blockSide ** 3;
+        const volumeOnlyCount = gameState.boxVolume / blockVolume;
+        const volumeOnlyText = formatNumber(volumeOnlyCount);
+        const exampleBoxVolume = 10 * 10 * 10;
+        const exampleBlockVolume = 4 * 4 * 4;
+        const exampleWrongCount = exampleBoxVolume / exampleBlockVolume;
+        const exampleCorrectCount = Math.floor(10 / 4) ** 3;
+        const wrongCalcHtml = gameState.isPerfectFit ? '' : `
+            <div class="wrong-calc">
+              <strong>常見錯誤：</strong>只用體積相除會得到 ${formatNumber(gameState.boxVolume)} ÷ ${formatNumber(blockVolume)} = ${volumeOnlyText}。這沒有檢查每一條邊可否完整放入積木，所以不是可靠方法。<br>
+              例：10 × 10 × 10 的方盒放入 4 × 4 × 4 的積木，1000 ÷ 64 = ${formatNumber(exampleWrongCount)}，但每邊只可放 2 個，所以實際最多是 2 × 2 × 2 = ${exampleCorrectCount} 塊。
+            </div>
+        `;
+
+        mathNote.innerHTML = `
+          <div class="usage-explanation">
+            <div><strong>空間利用率計算：</strong></div>
+            <ol>
+              <li>方盒體積：${gameState.boxWidth} × ${gameState.boxHeight} × ${gameState.boxLength} = ${formatNumber(gameState.boxVolume)} cm³</li>
+              <li>一粒積木體積：${gameState.blockSide} × ${gameState.blockSide} × ${gameState.blockSide} = ${formatNumber(blockVolume)} cm³</li>
+              <li>實際放入積木體積總和：${gameState.totalBlocks} × ${formatNumber(blockVolume)} = ${formatNumber(gameState.usedVolume)} cm³</li>
+            </ol>
+            <div class="usage-rate-line">空間利用率 = ${formatNumber(gameState.usedVolume)} ÷ ${formatNumber(gameState.boxVolume)} × 100% = ${gameState.usageRate.toFixed(1)}%</div>
+            ${wrongCalcHtml}
+          </div>
+        `;
+      }
+
+      function updateButtonStates() {
+        const canAdd = gameState.isGenerated && gameState.currentBlockIndex < gameState.totalBlocks;
+        addBtn.disabled = !canAdd;
+        layerBtn.disabled = !canAdd;
+        fillBtn.disabled = !canAdd;
+        resetBtn.disabled = !gameState.isGenerated;
+        viewResetBtn.disabled = !gameState.isGenerated;
+      }
+
+      function updateCounter() {
+        if (!gameState.isGenerated) return;
+        counterDisplay.innerHTML = `已放置：<span style="color:#0b72ff;">${gameState.currentBlockIndex}</span> / ${gameState.totalBlocks}`;
+        if (gameState.currentBlockIndex >= gameState.totalBlocks) {
+          counterDisplay.innerHTML += gameState.isPerfectFit
+            ? ' 🎉 盒子完美裝滿了！'
+            : ' 🎉 已達最大數量，但仍留有空隙。';
+        }
+        updateButtonStates();
+      }
+
+      function resetSimulation(keepTimers = false) {
+        if (!keepTimers) clearPendingTimers();
+        boxWorld.querySelectorAll('.placed-block').forEach(block => block.remove());
+        if (gameState.isGenerated) {
+          gameState.currentBlockIndex = 0;
+          updateCounter();
+        }
+      }
+
+      function addBlock({ animate = true } = {}) {
+        if (!gameState.isGenerated || gameState.currentBlockIndex >= gameState.totalBlocks) return false;
+        const pos = gameState.blockPositions[gameState.currentBlockIndex];
+        createBlockElement(pos, animate);
+        gameState.currentBlockIndex += 1;
+        updateCounter();
+        return true;
+      }
+
+      function setLayerAnimationState(isAnimating) {
+        addBtn.disabled = isAnimating;
+        layerBtn.disabled = isAnimating;
+        fillBtn.disabled = isAnimating;
+        resetBtn.disabled = !gameState.isGenerated;
+        viewResetBtn.disabled = !gameState.isGenerated;
+        if (!isAnimating) updateButtonStates();
+      }
+
+      function addLayer() {
+        if (!gameState.isGenerated || gameState.currentBlockIndex >= gameState.totalBlocks) return;
+        const remainderInLayer = gameState.currentBlockIndex % gameState.blocksPerLayer;
+        const blocksToNextLayer = remainderInLayer === 0 ? gameState.blocksPerLayer : gameState.blocksPerLayer - remainderInLayer;
+        const limit = Math.min(blocksToNextLayer, gameState.totalBlocks - gameState.currentBlockIndex);
+
+        setLayerAnimationState(true);
+        for (let i = 0; i < limit; i++) {
+          const timer = window.setTimeout(() => {
+            addBlock();
+            if (i === limit - 1) setLayerAnimationState(false);
+          }, i * 55);
+          pendingTimers.push(timer);
+        }
+      }
+
+      function fillAllBlocks() {
+        if (!gameState.isGenerated || gameState.currentBlockIndex >= gameState.totalBlocks) return;
+        clearPendingTimers();
+        while (gameState.currentBlockIndex < gameState.totalBlocks) {
+          addBlock({ animate: false });
+        }
+        updateCounter();
+      }
+
+      function resetView() {
+        currentRotation = { x: -18, y: 34 };
+        updateWorldRotation();
+      }
+
+      function buildScene() {
+        boxWorld.innerHTML = '';
+        buildShell();
+        buildDimensionLabels();
+        calculateBlockPositions();
+      }
+
+      function generateNewProblem() {
+        clearPendingTimers();
+
+        const boxWidth = parsePositiveInteger(boxWidthInput);
+        const boxHeight = parsePositiveInteger(boxHeightInput);
+        const boxLength = parsePositiveInteger(boxLengthInput);
+        const blockSide = parsePositiveInteger(blockSideInput);
+
+        if (!boxWidth || !boxHeight || !boxLength || !blockSide) {
+          setFeedback('error', '所有尺寸都必須是正整數。');
+          disableSimulation();
+          return;
+        }
+
+        if (blockSide > boxWidth || blockSide > boxHeight || blockSide > boxLength) {
+          setFeedback('error', '小積木邊長不可大於大盒子的任何一個方向。');
+          disableSimulation();
+          return;
+        }
+
+        const countX = Math.floor(boxWidth / blockSide);
+        const countY = Math.floor(boxHeight / blockSide);
+        const countZ = Math.floor(boxLength / blockSide);
+        const totalBlocks = countX * countY * countZ;
+        const blocksPerLayer = countX * countZ;
+        const remainderWidth = boxWidth % blockSide;
+        const remainderHeight = boxHeight % blockSide;
+        const remainderLength = boxLength % blockSide;
+        const usedVolume = totalBlocks * (blockSide ** 3);
+        const boxVolume = boxWidth * boxHeight * boxLength;
+        const rate = (usedVolume / boxVolume) * 100;
+        const maxDimension = Math.max(boxWidth, boxHeight, boxLength);
+        const scale = MODEL_MAX_PX / maxDimension;
+        const boxPxWidth = boxWidth * scale;
+        const boxPxHeight = boxHeight * scale;
+        const boxPxLength = boxLength * scale;
+        const blockPx = blockSide * scale;
+        const isPerfectFit = remainderWidth === 0 && remainderHeight === 0 && remainderLength === 0;
+
+        if (totalBlocks > MAX_RENDERED_BLOCKS) {
+          setFeedback('error', `這組尺寸需要顯示 ${totalBlocks.toLocaleString()} 個小積木，瀏覽器可能會變慢。請把小積木邊長調大，或把總數控制在 ${MAX_RENDERED_BLOCKS.toLocaleString()} 個以內。`);
+          disableSimulation();
+          return;
+        }
+
+        gameState = {
+          isGenerated: true,
+          boxWidth,
+          boxHeight,
+          boxLength,
+          blockSide,
+          countX,
+          countY,
+          countZ,
+          blocksPerLayer,
+          totalBlocks,
+          remainderWidth,
+          remainderHeight,
+          remainderLength,
+          usedVolume,
+          boxVolume,
+          usageRate: rate,
+          currentBlockIndex: 0,
+          blockPositions: [],
+          boxPxWidth,
+          boxPxHeight,
+          boxPxLength,
+          blockPx,
+          isPerfectFit
+        };
+
+        if (isPerfectFit) {
+          setFeedback('success', '✅ 尺寸配搭合適，可完整填滿。');
+        } else {
+          setFeedback('warning', `⚠️ 有空隙：闊餘 ${remainderWidth} cm、高餘 ${remainderHeight} cm、長餘 ${remainderLength} cm。`);
+        }
+
+        buildScene();
+        updateMathPanel();
+        resetSimulation(true);
+        controls.classList.remove('disabled');
+        resetView();
+        updateButtonStates();
+      }
+
+      scene.addEventListener('pointerdown', event => {
+        if (event.button !== undefined && event.button !== 0) return;
+        isDragging = true;
+        previousPointerPosition = { x: event.clientX, y: event.clientY };
+        scene.style.cursor = 'grabbing';
+        scene.setPointerCapture?.(event.pointerId);
+      });
+
+      scene.addEventListener('pointermove', event => {
+        if (!isDragging) return;
+        event.preventDefault();
+
+        const deltaX = event.clientX - previousPointerPosition.x;
+        const deltaY = event.clientY - previousPointerPosition.y;
+        currentRotation.y += deltaX * 0.42;
+        currentRotation.x -= deltaY * 0.32;
+        currentRotation.x = Math.max(-82, Math.min(82, currentRotation.x));
+        previousPointerPosition = { x: event.clientX, y: event.clientY };
+        scheduleRotationUpdate();
+      });
+
+      function endDrag(event) {
+        if (!isDragging) return;
+        isDragging = false;
+        scene.style.cursor = 'grab';
+        if (event?.pointerId !== undefined) scene.releasePointerCapture?.(event.pointerId);
+      }
+
+      scene.addEventListener('pointerup', endDrag);
+      scene.addEventListener('pointercancel', endDrag);
+      scene.addEventListener('lostpointercapture', () => {
+        isDragging = false;
+        scene.style.cursor = 'grab';
+      });
+
+      generateBtn.addEventListener('click', generateNewProblem);
+      cubePresetBtn.addEventListener('click', () => {
+        setCubePreset();
+        generateNewProblem();
+      });
+      addBtn.addEventListener('click', () => addBlock());
+      layerBtn.addEventListener('click', addLayer);
+      fillBtn.addEventListener('click', fillAllBlocks);
+      resetBtn.addEventListener('click', () => resetSimulation(false));
+      viewResetBtn.addEventListener('click', resetView);
+
+      [boxWidthInput, boxHeightInput, boxLengthInput, blockSideInput].forEach(input => {
+        input.addEventListener('keydown', event => {
+          if (event.key === 'Enter') generateNewProblem();
+        });
+      });
+
+      resetCountersDisplay();
+      generateNewProblem();
+    });
+  </script>
+</body>
+</html>
