@@ -198,6 +198,46 @@
       font-size: 0.92rem;
     }
 
+    .settings-stack {
+      display: grid;
+      gap: 8px;
+    }
+
+    .setting-section {
+      border: 1px solid #e3ecf5;
+      border-radius: 12px;
+      background: #fbfdff;
+      padding: 9px;
+    }
+
+    .setting-section-title {
+      margin: 0 0 7px;
+      color: #37474f;
+      font-size: 0.88rem;
+      font-weight: 800;
+      line-height: 1.2;
+    }
+
+    .box-dim-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(74px, 1fr));
+      gap: 7px;
+    }
+
+    .block-dim-grid {
+      display: grid;
+      grid-template-columns: minmax(120px, 1fr);
+      gap: 7px;
+    }
+
+    .settings-panel .setting-section .input-group label {
+      font-size: 0.82rem;
+    }
+
+    .settings-panel .setting-section .input-group input {
+      padding: 6px 7px;
+    }
+
     .math-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(120px, 1fr));
@@ -429,6 +469,7 @@
       body { padding: 8px; }
       #app-container { padding: 12px; }
       .settings-grid { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+      .box-dim-grid { grid-template-columns: repeat(3, minmax(80px, 1fr)); }
       .math-grid { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
       #simulation-panel { min-height: 430px; }
       .scene { width: min(100%, 560px); height: 340px; }
@@ -437,6 +478,7 @@
 
     @media (max-width: 420px) {
       .settings-grid { grid-template-columns: 1fr; }
+      .box-dim-grid { grid-template-columns: 1fr; }
       .math-grid { grid-template-columns: 1fr; }
       #simulation-panel { min-height: 360px; }
       .scene { width: min(100%, 340px); height: 280px; }
@@ -447,7 +489,7 @@
   <main id="app-container">
     <header class="page-header">
       <h1>正方體／長方體體積互動模擬器</h1>
-      <p>可自訂大盒子的闊、高、長，以及小正方體積木邊長；拖曳圖形可從不同角度觀察，並用逐個、逐層或一鍵方式填滿盒子。</p>
+      <p>可自訂大盒子的長、闊、高，以及小正方體積木邊長；拖曳圖形可從不同角度觀察，並用逐個、逐層或一鍵方式填滿盒子。</p>
     </header>
 
     <section class="workspace-grid">
@@ -476,22 +518,32 @@
       <div class="right-column">
         <section class="panel settings-panel" aria-labelledby="settings-title">
           <h2 id="settings-title">教學設定</h2>
-          <div class="settings-grid">
-            <div class="input-group">
-              <label for="box-width-input">大盒子闊（cm）</label>
-              <input type="number" id="box-width-input" value="20" min="1" step="1" inputmode="numeric">
+          <div class="settings-stack">
+            <div class="setting-section" aria-label="大盒子尺寸">
+              <div class="setting-section-title">大盒子尺寸</div>
+              <div class="box-dim-grid">
+                <div class="input-group">
+                  <label for="box-length-input">長（cm）</label>
+                  <input type="number" id="box-length-input" value="20" min="1" step="1" inputmode="numeric">
+                </div>
+                <div class="input-group">
+                  <label for="box-width-input">闊（cm）</label>
+                  <input type="number" id="box-width-input" value="20" min="1" step="1" inputmode="numeric">
+                </div>
+                <div class="input-group">
+                  <label for="box-height-input">高（cm）</label>
+                  <input type="number" id="box-height-input" value="20" min="1" step="1" inputmode="numeric">
+                </div>
+              </div>
             </div>
-            <div class="input-group">
-              <label for="box-height-input">大盒子高（cm）</label>
-              <input type="number" id="box-height-input" value="20" min="1" step="1" inputmode="numeric">
-            </div>
-            <div class="input-group">
-              <label for="box-length-input">大盒子長（cm）</label>
-              <input type="number" id="box-length-input" value="20" min="1" step="1" inputmode="numeric">
-            </div>
-            <div class="input-group">
-              <label for="block-side-input">小積木邊長（cm）</label>
-              <input type="number" id="block-side-input" value="5" min="1" step="1" inputmode="numeric">
+            <div class="setting-section" aria-label="小積木尺寸">
+              <div class="setting-section-title">小積木尺寸</div>
+              <div class="block-dim-grid">
+                <div class="input-group">
+                  <label for="block-side-input">邊長（cm）</label>
+                  <input type="number" id="block-side-input" value="5" min="1" step="1" inputmode="numeric">
+                </div>
+              </div>
             </div>
           </div>
           <div class="action-row">
@@ -504,9 +556,9 @@
         <section class="panel" aria-labelledby="math-title">
           <h2 id="math-title">數學關係</h2>
           <div class="math-grid">
+            <div class="math-card"><div class="label">長向可放</div><div class="value" id="count-length">—</div></div>
             <div class="math-card"><div class="label">闊向可放</div><div class="value" id="count-width">—</div></div>
             <div class="math-card"><div class="label">高向可放</div><div class="value" id="count-height">—</div></div>
-            <div class="math-card"><div class="label">長向可放</div><div class="value" id="count-length">—</div></div>
             <div class="math-card"><div class="label">每層積木數</div><div class="value" id="count-layer">—</div></div>
             <div class="math-card"><div class="label">最多積木數</div><div class="value" id="count-total">—</div></div>
             <div class="math-card"><div class="label">空間利用率</div><div class="value" id="usage-rate">—</div></div>
@@ -618,7 +670,7 @@
       }
 
       function setCubePreset() {
-        const value = boxWidthInput.value || boxHeightInput.value || boxLengthInput.value || '20';
+        const value = boxLengthInput.value || boxWidthInput.value || boxHeightInput.value || '20';
         boxWidthInput.value = value;
         boxHeightInput.value = value;
         boxLengthInput.value = value;
@@ -778,8 +830,8 @@
         countWidth.textContent = `${gameState.countX} 個`;
         countHeight.textContent = `${gameState.countY} 個`;
         countLength.textContent = `${gameState.countZ} 個`;
-        countLayer.textContent = `${gameState.countX} × ${gameState.countZ} = ${gameState.blocksPerLayer}`;
-        countTotal.textContent = `${gameState.countX} × ${gameState.countY} × ${gameState.countZ} = ${gameState.totalBlocks}`;
+        countLayer.textContent = `${gameState.countZ} × ${gameState.countX} = ${gameState.blocksPerLayer}`;
+        countTotal.textContent = `${gameState.countZ} × ${gameState.countX} × ${gameState.countY} = ${gameState.totalBlocks}`;
         usageRate.textContent = `${gameState.usageRate.toFixed(1)}%`;
 
         const blockVolume = gameState.blockSide ** 3;
@@ -791,7 +843,8 @@
         const exampleCorrectCount = Math.floor(10 / 4) ** 3;
         const wrongCalcHtml = gameState.isPerfectFit ? '' : `
             <div class="wrong-calc">
-              <strong>常見錯誤：</strong>只用體積相除會得到 ${formatNumber(gameState.boxVolume)} ÷ ${formatNumber(blockVolume)} = ${volumeOnlyText}。這沒有檢查每一條邊可否完整放入積木，所以不是可靠方法。
+              <strong>常見錯誤：</strong>只用體積相除會得到 ${formatNumber(gameState.boxVolume)} ÷ ${formatNumber(blockVolume)} = ${volumeOnlyText}。這沒有檢查每一條邊可否完整放入積木，所以不是可靠方法。<br>
+              例：10 × 10 × 10 的方盒放入 4 × 4 × 4 的積木，1000 ÷ 64 = ${formatNumber(exampleWrongCount)}，但每邊只可放 2 個，所以實際最多是 2 × 2 × 2 = ${exampleCorrectCount} 塊。
             </div>
         `;
 
@@ -799,7 +852,7 @@
           <div class="usage-explanation">
             <div><strong>空間利用率計算：</strong></div>
             <ol>
-              <li>方盒體積：${gameState.boxWidth} × ${gameState.boxHeight} × ${gameState.boxLength} = ${formatNumber(gameState.boxVolume)} cm³</li>
+              <li>方盒體積：${gameState.boxLength} × ${gameState.boxWidth} × ${gameState.boxHeight} = ${formatNumber(gameState.boxVolume)} cm³</li>
               <li>一粒積木體積：${gameState.blockSide} × ${gameState.blockSide} × ${gameState.blockSide} = ${formatNumber(blockVolume)} cm³</li>
               <li>實際放入積木體積總和：${gameState.totalBlocks} × ${formatNumber(blockVolume)} = ${formatNumber(gameState.usedVolume)} cm³</li>
             </ol>
@@ -967,7 +1020,7 @@
         if (isPerfectFit) {
           setFeedback('success', '✅ 尺寸配搭合適，可完整填滿。');
         } else {
-          setFeedback('warning', `⚠️ 有空隙：闊餘 ${remainderWidth} cm、高餘 ${remainderHeight} cm、長餘 ${remainderLength} cm。`);
+          setFeedback('warning', `⚠️ 有空隙：長餘 ${remainderLength} cm、闊餘 ${remainderWidth} cm、高餘 ${remainderHeight} cm。`);
         }
 
         buildScene();
