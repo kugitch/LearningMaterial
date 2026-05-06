@@ -791,8 +791,7 @@
         const exampleCorrectCount = Math.floor(10 / 4) ** 3;
         const wrongCalcHtml = gameState.isPerfectFit ? '' : `
             <div class="wrong-calc">
-              <strong>常見錯誤：</strong>只用體積相除會得到 ${formatNumber(gameState.boxVolume)} ÷ ${formatNumber(blockVolume)} = ${volumeOnlyText}。這沒有檢查每一條邊可否完整放入積木，所以不是可靠方法。<br>
-              例：10 × 10 × 10 的方盒放入 4 × 4 × 4 的積木，1000 ÷ 64 = ${formatNumber(exampleWrongCount)}，但每邊只可放 2 個，所以實際最多是 2 × 2 × 2 = ${exampleCorrectCount} 塊。
+              <strong>常見錯誤：</strong>只用體積相除會得到 ${formatNumber(gameState.boxVolume)} ÷ ${formatNumber(blockVolume)} = ${volumeOnlyText}。這沒有檢查每一條邊可否完整放入積木，所以不是可靠方法。
             </div>
         `;
 
