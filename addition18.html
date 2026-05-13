@@ -332,6 +332,11 @@
       background: #475569;
     }
 
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
     .player-form {
       margin: 24px auto 0;
       max-width: 560px;
@@ -374,6 +379,25 @@
     input:focus {
       border-color: #2563eb;
       box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+    }
+
+    .status-message {
+      margin-top: 12px;
+      min-height: 28px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .status-message.good {
+      color: var(--good);
+    }
+
+    .status-message.bad {
+      color: var(--bad);
+    }
+
+    .status-message.pending {
+      color: var(--warn);
     }
 
     .result-grid {
@@ -496,7 +520,7 @@
         <h1>18以內加法挑戰</h1>
         <p>30秒限時作答｜答對 +10 分｜答錯 -20 分｜最低 0 分</p>
       </div>
-      <div class="pill">Step 1：單機版，不記錄資料</div>
+      <div class="pill">Google Sheet 龍虎榜版</div>
     </header>
 
     <main>
@@ -520,8 +544,8 @@
               扣 20 分，最低 0 分
             </div>
             <div class="rule">
-              <strong>結果</strong>
-              完成後才填班別及姓名／暱稱
+              <strong>完成後</strong>
+              填寫班別及姓名／暱稱，上載到龍虎榜
             </div>
           </div>
 
@@ -572,7 +596,7 @@
       <section id="resultScreen" class="screen">
         <div class="result-card">
           <h2>遊戲完成！</h2>
-          <p class="muted">這是第一步單機版，資料只會留在本頁，不會上傳到 Google Sheet。</p>
+          <p class="muted">填寫班別及姓名／暱稱後，分數會記錄到 Google Sheet，並更新龍虎榜。</p>
 
           <div class="big-score"><span id="finalScore">0</span> 分</div>
 
@@ -608,11 +632,12 @@
                 <input id="nameInput" type="text" placeholder="例如：A12 / 小明" autocomplete="off" />
               </div>
             </div>
-            <button class="btn" onclick="saveLocalResult()">加入本機龍虎榜</button>
+            <button id="submitBtn" class="btn" onclick="submitResult()">提交分數到龍虎榜</button>
+            <div id="submitStatus" class="status-message"></div>
           </div>
 
           <div id="leaderboardBox" class="leaderboard">
-            <h3>🏆 本機龍虎榜</h3>
+            <h3>🏆 全班龍虎榜 Top 10</h3>
             <table>
               <thead>
                 <tr>
@@ -626,7 +651,7 @@
               </thead>
               <tbody id="leaderboardBody">
                 <tr>
-                  <td colspan="6" class="muted">尚未有紀錄</td>
+                  <td colspan="6" class="muted">正在讀取龍虎榜……</td>
                 </tr>
               </tbody>
             </table>
@@ -635,6 +660,7 @@
           <div style="margin-top: 22px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
             <button class="btn" onclick="restartGame()">再玩一次</button>
             <button class="btn secondary" onclick="backToStart()">返回開始頁</button>
+            <button class="btn secondary" onclick="loadLeaderboard()">重新整理龍虎榜</button>
           </div>
         </div>
       </section>
@@ -646,6 +672,10 @@
     const MAX_SUM = 18;
     const POINT_CORRECT = 10;
     const POINT_WRONG = 20;
+    const GAME_NAME = "addition18";
+
+    // Google Apps Script Web App URL
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbyp5pZ65RIm28SJn1_I4KKfV3zT2Bevut9Cjgsw17VAYqdOCNVxWxwoYCcmg_VSOxUz/exec";
 
     let timeLeft = GAME_TIME;
     let score = 0;
@@ -656,7 +686,7 @@
     let timer = null;
     let locked = false;
     let finalResult = null;
-    let localLeaderboard = [];
+    let submitted = false;
 
     const startScreen = document.getElementById("startScreen");
     const gameScreen = document.getElementById("gameScreen");
@@ -673,9 +703,11 @@
     const keypad = document.getElementById("keypad");
     const playerForm = document.getElementById("playerForm");
     const showFormBtn = document.getElementById("showFormBtn");
+    const submitBtn = document.getElementById("submitBtn");
+    const submitStatus = document.getElementById("submitStatus");
 
     createKeypad();
-    renderLeaderboard();
+    loadLeaderboard();
 
     function showScreen(screen) {
       [startScreen, gameScreen, resultScreen].forEach(item => item.classList.remove("active"));
@@ -728,8 +760,12 @@
       currentInput = "";
       locked = false;
       finalResult = null;
+      submitted = false;
       playerForm.classList.remove("show");
       showFormBtn.style.display = "inline-block";
+      submitBtn.disabled = false;
+      submitBtn.textContent = "提交分數到龍虎榜";
+      setSubmitStatus("", "");
       document.getElementById("classInput").value = "";
       document.getElementById("nameInput").value = "";
       setFeedback("請按數字作答", "");
@@ -856,6 +892,7 @@
       document.getElementById("finalAccuracy").textContent = `${accuracy}%`;
 
       showScreen(resultScreen);
+      loadLeaderboard();
     }
 
     function showPlayerForm() {
@@ -864,53 +901,129 @@
       document.getElementById("classInput").focus();
     }
 
-    function saveLocalResult() {
-      if (!finalResult) return;
+    async function submitResult() {
+      if (!finalResult || submitted) return;
 
-      const className = document.getElementById("classInput").value.trim() || "未填";
-      const playerName = document.getElementById("nameInput").value.trim() || "未填";
+      const className = document.getElementById("classInput").value.trim();
+      const playerName = document.getElementById("nameInput").value.trim();
 
-      localLeaderboard.push({
-        className,
-        playerName,
-        score: finalResult.score,
-        correct: finalResult.correct,
-        wrong: finalResult.wrong,
-        total: finalResult.total,
-        accuracy: finalResult.accuracy,
-        time: new Date()
-      });
+      if (!className || !playerName) {
+        setSubmitStatus("請先填寫班別及姓名／暱稱。", "bad");
+        return;
+      }
 
-      localLeaderboard.sort((a, b) => {
-        return b.score - a.score ||
-          b.correct - a.correct ||
-          a.wrong - b.wrong ||
-          a.time - b.time;
-      });
+      submitted = true;
+      submitBtn.disabled = true;
+      submitBtn.textContent = "提交中……";
+      setSubmitStatus("正在提交分數……", "pending");
 
-      localLeaderboard = localLeaderboard.slice(0, 10);
-      renderLeaderboard();
-      playerForm.classList.remove("show");
+      try {
+        const result = await jsonp({
+          action: "submit",
+          className,
+          name: playerName,
+          game: GAME_NAME,
+          score: finalResult.score,
+          correct: finalResult.correct,
+          wrong: finalResult.wrong
+        });
+
+        if (!result || result.ok !== true) {
+          throw new Error(result && result.error ? result.error : "提交失敗");
+        }
+
+        setSubmitStatus("✅ 分數已提交，正在更新龍虎榜。", "good");
+        submitBtn.textContent = "已提交";
+        await loadLeaderboard();
+
+      } catch (error) {
+        submitted = false;
+        submitBtn.disabled = false;
+        submitBtn.textContent = "重新提交分數";
+        setSubmitStatus("❌ 提交失敗，請檢查 Apps Script 權限或網絡後再試。", "bad");
+        console.error(error);
+      }
     }
 
-    function renderLeaderboard() {
+    async function loadLeaderboard() {
+      const body = document.getElementById("leaderboardBody");
+      body.innerHTML = `<tr><td colspan="6" class="muted">正在讀取龍虎榜……</td></tr>`;
+
+      try {
+        const data = await jsonp({ action: "leaderboard" });
+
+        if (!data || data.ok !== true) {
+          throw new Error(data && data.error ? data.error : "讀取失敗");
+        }
+
+        renderLeaderboard(data.leaderboard || []);
+
+      } catch (error) {
+        body.innerHTML = `<tr><td colspan="6" class="muted">暫時未能讀取龍虎榜。請檢查 Apps Script 部署設定。</td></tr>`;
+        console.error(error);
+      }
+    }
+
+    function renderLeaderboard(leaderboard) {
       const body = document.getElementById("leaderboardBody");
 
-      if (!localLeaderboard.length) {
+      if (!leaderboard.length) {
         body.innerHTML = `<tr><td colspan="6" class="muted">尚未有紀錄</td></tr>`;
         return;
       }
 
-      body.innerHTML = localLeaderboard.map((item, index) => `
+      body.innerHTML = leaderboard.map((item, index) => `
         <tr>
           <td>${index + 1}</td>
-          <td>${escapeHtml(item.className)}</td>
-          <td>${escapeHtml(item.playerName)}</td>
-          <td><strong>${item.score}</strong></td>
-          <td>${item.correct}</td>
-          <td>${item.wrong}</td>
+          <td>${escapeHtml(item.className || "")}</td>
+          <td>${escapeHtml(item.name || "")}</td>
+          <td><strong>${Number(item.score || 0)}</strong></td>
+          <td>${Number(item.correct || 0)}</td>
+          <td>${Number(item.wrong || 0)}</td>
         </tr>
       `).join("");
+    }
+
+    function jsonp(params, timeout = 10000) {
+      return new Promise((resolve, reject) => {
+        const callbackName = "callback_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
+        params.callback = callbackName;
+
+        const query = new URLSearchParams(params).toString();
+        const script = document.createElement("script");
+        let finished = false;
+
+        const timerId = setTimeout(() => {
+          if (finished) return;
+          finished = true;
+          cleanup();
+          reject(new Error("Request timeout"));
+        }, timeout);
+
+        window[callbackName] = function(data) {
+          if (finished) return;
+          finished = true;
+          clearTimeout(timerId);
+          cleanup();
+          resolve(data);
+        };
+
+        script.onerror = function() {
+          if (finished) return;
+          finished = true;
+          clearTimeout(timerId);
+          cleanup();
+          reject(new Error("JSONP script error"));
+        };
+
+        function cleanup() {
+          delete window[callbackName];
+          script.remove();
+        }
+
+        script.src = GAS_URL + "?" + query;
+        document.body.appendChild(script);
+      });
     }
 
     function restartGame() {
@@ -920,6 +1033,7 @@
     function backToStart() {
       clearInterval(timer);
       timer = null;
+      loadLeaderboard();
       showScreen(startScreen);
     }
 
@@ -927,6 +1041,12 @@
       feedback.textContent = text;
       feedback.className = "feedback";
       if (type) feedback.classList.add(type);
+    }
+
+    function setSubmitStatus(text, type) {
+      submitStatus.textContent = text;
+      submitStatus.className = "status-message";
+      if (type) submitStatus.classList.add(type);
     }
 
     function setKeypadEnabled(enabled) {
