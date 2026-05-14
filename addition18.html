@@ -540,7 +540,7 @@
         <h1>18以內加法挑戰</h1>
         <p>30秒限時作答｜答對 +10 分｜答錯 -20 分｜最低 0 分</p>
       </div>
-      <div class="pill">龍虎榜版V0.3</div>
+      <div class="pill">龍虎榜版v0.4</div>
     </header>
 
     <main>
@@ -549,6 +549,7 @@
           <h2>準備好開始嗎？</h2>
           <p>題目會出現不同形式的18以內加法，例如 <strong>4 + 7 = ?</strong>、<strong>? + 2 = 11</strong>、<strong>8 + ? = 15</strong>。</p>
           <p>按下數字後會即時判斷。若答案是兩位數，例如 13，先按 1 會等待你輸入第二個數字；若第一個數字已不可能正確，會立即判斷為答錯。</p>
+          <p>新版已取消 0 和 1 作為加數，並較多出現答案 10 以上的跨十題。</p>
 
           <div class="rules">
             <div class="rule">
@@ -692,6 +693,10 @@
   <script>
     const GAME_TIME = 30;
     const MAX_SUM = 18;
+    const MIN_ADDEND = 2;
+    const MIN_TARGET_SUM = 8;
+    const HARD_TARGET_SUM = 11;
+    const HARD_QUESTION_RATE = 0.75;
     const POINT_CORRECT = 10;
     const POINT_WRONG = 20;
     const GAME_NAME = "addition18";
@@ -850,9 +855,10 @@
       questionBox.classList.remove("shake", "pop");
       setFeedback("請按數字作答", "");
 
-      const sum = randomInt(0, MAX_SUM);
-      const a = randomInt(0, sum);
-      const b = sum - a;
+      const pair = generateAdditionPair();
+      const a = pair.a;
+      const b = pair.b;
+      const sum = pair.sum;
       const type = randomInt(1, 3);
 
       if (type === 1) {
@@ -941,7 +947,7 @@
           setKeypadEnabled(true);
           generateQuestion();
         }
-      }, 150);
+      }, 650);
     }
 
     function endGame() {
@@ -1140,6 +1146,31 @@
       element.classList.remove(className);
       void element.offsetWidth;
       element.classList.add(className);
+    }
+
+    function generateAdditionPair() {
+      const hardPairs = [];
+      const mediumPairs = [];
+
+      for (let a = MIN_ADDEND; a <= MAX_SUM - MIN_ADDEND; a++) {
+        for (let b = MIN_ADDEND; b <= MAX_SUM - a; b++) {
+          const sum = a + b;
+
+          if (sum < MIN_TARGET_SUM || sum > MAX_SUM) continue;
+
+          const pair = { a, b, sum };
+
+          if (sum >= HARD_TARGET_SUM && a >= 3 && b >= 3) {
+            hardPairs.push(pair);
+          } else {
+            mediumPairs.push(pair);
+          }
+        }
+      }
+
+      const useHard = hardPairs.length > 0 && Math.random() < HARD_QUESTION_RATE;
+      const pool = useHard ? hardPairs : (mediumPairs.length ? mediumPairs : hardPairs);
+      return pool[randomInt(0, pool.length - 1)];
     }
 
     function randomInt(min, max) {
