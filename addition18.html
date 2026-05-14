@@ -8,7 +8,7 @@
     :root {
       --bg: #f3f7ff;
       --card: #ffffff;
-      --ink: #1f2937;
+      --ink: #111827;
       --muted: #6b7280;
       --primary: #2563eb;
       --primary-dark: #1d4ed8;
@@ -36,7 +36,7 @@
 
     .app {
       width: min(980px, 100%);
-      background: rgba(255, 255, 255, 0.86);
+      background: rgba(255, 255, 255, 0.9);
       border: 1px solid rgba(255, 255, 255, 0.9);
       border-radius: 28px;
       box-shadow: 0 24px 70px rgba(37, 99, 235, 0.18);
@@ -194,7 +194,10 @@
       height: 100%;
       width: 100%;
       background: linear-gradient(90deg, #22c55e, #2563eb);
-      transition: width 0.2s linear;
+      transform-origin: left center;
+      transform: scaleX(1);
+      transition: none;
+      will-change: transform;
     }
 
     .question-box {
@@ -208,14 +211,27 @@
       background: linear-gradient(180deg, #ffffff, #f8fbff);
       border: 1px solid var(--line);
       padding: 24px;
+      overflow: hidden;
+    }
+
+    .question-line {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 92px;
+      overflow: hidden;
     }
 
     .question {
-      font-size: clamp(3rem, 10vw, 6rem);
+      display: inline-block;
+      white-space: nowrap;
       font-weight: 900;
       color: #111827;
       line-height: 1.05;
-      letter-spacing: 0.02em;
+      letter-spacing: 0.005em;
+      font-size: 78px;
+      max-width: none;
     }
 
     .input-display {
@@ -503,6 +519,10 @@
         min-height: 220px;
       }
 
+      .question-line {
+        min-height: 74px;
+      }
+
       .key {
         min-height: 62px;
       }
@@ -520,7 +540,7 @@
         <h1>18以內加法挑戰</h1>
         <p>30秒限時作答｜答對 +10 分｜答錯 -20 分｜最低 0 分</p>
       </div>
-      <div class="pill">Google Sheet 龍虎榜版</div>
+      <div class="pill">龍虎榜版V0.2</div>
     </header>
 
     <main>
@@ -580,7 +600,9 @@
             </div>
 
             <div id="questionBox" class="question-box">
-              <div id="questionText" class="question">4 + 7 = ?</div>
+              <div class="question-line">
+                <div id="questionText" class="question">4 + 7 = ?</div>
+              </div>
               <div id="inputDisplay" class="input-display">　</div>
               <div id="feedback" class="feedback">請按數字作答</div>
             </div>
@@ -673,8 +695,6 @@
     const POINT_CORRECT = 10;
     const POINT_WRONG = 20;
     const GAME_NAME = "addition18";
-
-    // Google Apps Script Web App URL
     const GAS_URL = "https://script.google.com/macros/s/AKfycbyp5pZ65RIm28SJn1_I4KKfV3zT2Bevut9Cjgsw17VAYqdOCNVxWxwoYCcmg_VSOxUz/exec";
 
     let timeLeft = GAME_TIME;
@@ -683,10 +703,14 @@
     let wrongCount = 0;
     let currentAnswer = 0;
     let currentInput = "";
-    let timer = null;
+    let timerFrame = null;
+    let gameStartTime = 0;
+    let gameEndTime = 0;
+    let gameRunning = false;
     let locked = false;
     let finalResult = null;
     let submitted = false;
+    let nextQuestionTimer = null;
 
     const startScreen = document.getElementById("startScreen");
     const gameScreen = document.getElementById("gameScreen");
@@ -708,6 +732,8 @@
 
     createKeypad();
     loadLeaderboard();
+
+    window.addEventListener("resize", fitQuestionText);
 
     function showScreen(screen) {
       [startScreen, gameScreen, resultScreen].forEach(item => item.classList.remove("active"));
@@ -736,22 +762,15 @@
       resetGameState();
       showScreen(gameScreen);
       updateStats();
+      startAnalogTimer();
       generateQuestion();
       setKeypadEnabled(true);
-
-      timer = setInterval(() => {
-        timeLeft--;
-        updateStats();
-
-        if (timeLeft <= 0) {
-          endGame();
-        }
-      }, 1000);
     }
 
     function resetGameState() {
-      clearInterval(timer);
-      timer = null;
+      stopTimer();
+      clearTimeout(nextQuestionTimer);
+      nextQuestionTimer = null;
       timeLeft = GAME_TIME;
       score = 0;
       correctCount = 0;
@@ -769,10 +788,60 @@
       document.getElementById("classInput").value = "";
       document.getElementById("nameInput").value = "";
       setFeedback("請按數字作答", "");
+      timerBar.style.transform = "scaleX(1)";
+    }
+
+    function startAnalogTimer() {
+      stopTimer();
+      gameRunning = true;
+      gameStartTime = performance.now();
+      gameEndTime = gameStartTime + GAME_TIME * 1000;
+      runTimerFrame();
+    }
+
+    function runTimerFrame() {
+      if (!gameRunning) return;
+
+      const now = performance.now();
+      const remainingMs = Math.max(0, gameEndTime - now);
+      timeLeft = remainingMs / 1000;
+      updateStats();
+
+      if (remainingMs <= 0) {
+        endGame();
+        return;
+      }
+
+      timerFrame = requestAnimationFrame(runTimerFrame);
+    }
+
+    function stopTimer() {
+      gameRunning = false;
+      if (timerFrame !== null) {
+        cancelAnimationFrame(timerFrame);
+        timerFrame = null;
+      }
+    }
+
+    function updateStats() {
+      const displayTime = Math.ceil(Math.max(0, timeLeft));
+      const percent = Math.max(0, Math.min(1, timeLeft / GAME_TIME));
+
+      timeValue.textContent = displayTime;
+      scoreValue.textContent = score;
+      correctValue.textContent = correctCount;
+      wrongValue.textContent = wrongCount;
+      timerBar.style.transform = `scaleX(${percent})`;
+
+      if (timeLeft <= 10) {
+        timerBar.style.background = "linear-gradient(90deg, #f59e0b, #ef4444)";
+      } else {
+        timerBar.style.background = "linear-gradient(90deg, #22c55e, #2563eb)";
+      }
     }
 
     function generateQuestion() {
-      if (timeLeft <= 0) return;
+      if (!gameRunning || timeLeft <= 0) return;
 
       locked = false;
       currentInput = "";
@@ -787,19 +856,40 @@
       const type = randomInt(1, 3);
 
       if (type === 1) {
-        questionText.textContent = `${a} + ${b} = ?`;
+        setQuestionText(`${a} + ${b} = ?`);
         currentAnswer = sum;
       } else if (type === 2) {
-        questionText.textContent = `? + ${b} = ${sum}`;
+        setQuestionText(`? + ${b} = ${sum}`);
         currentAnswer = a;
       } else {
-        questionText.textContent = `${a} + ? = ${sum}`;
+        setQuestionText(`${a} + ? = ${sum}`);
         currentAnswer = b;
       }
     }
 
+    function setQuestionText(text) {
+      questionText.textContent = text;
+      requestAnimationFrame(fitQuestionText);
+    }
+
+    function fitQuestionText() {
+      if (!questionBox || !questionText) return;
+
+      const availableWidth = Math.max(220, questionBox.clientWidth - 60);
+      const maxFont = window.innerWidth <= 820 ? 58 : 78;
+      const minFont = window.innerWidth <= 820 ? 34 : 44;
+
+      questionText.style.fontSize = maxFont + "px";
+
+      let fontSize = maxFont;
+      while (questionText.scrollWidth > availableWidth && fontSize > minFont) {
+        fontSize -= 2;
+        questionText.style.fontSize = fontSize + "px";
+      }
+    }
+
     function pressDigit(digit) {
-      if (locked || timeLeft <= 0) return;
+      if (locked || !gameRunning || timeLeft <= 0) return;
 
       const answerText = String(currentAnswer);
       const nextInput = currentInput + digit;
@@ -844,32 +934,22 @@
 
     function nextQuestionSoon() {
       setKeypadEnabled(false);
+      clearTimeout(nextQuestionTimer);
 
-      setTimeout(() => {
-        if (timeLeft > 0) {
+      nextQuestionTimer = setTimeout(() => {
+        if (gameRunning && timeLeft > 0) {
           setKeypadEnabled(true);
           generateQuestion();
         }
       }, 650);
     }
 
-    function updateStats() {
-      timeValue.textContent = timeLeft;
-      scoreValue.textContent = score;
-      correctValue.textContent = correctCount;
-      wrongValue.textContent = wrongCount;
-      timerBar.style.width = `${Math.max(0, (timeLeft / GAME_TIME) * 100)}%`;
-
-      if (timeLeft <= 10) {
-        timerBar.style.background = "linear-gradient(90deg, #f59e0b, #ef4444)";
-      } else {
-        timerBar.style.background = "linear-gradient(90deg, #22c55e, #2563eb)";
-      }
-    }
-
     function endGame() {
-      clearInterval(timer);
-      timer = null;
+      if (finalResult) return;
+
+      stopTimer();
+      clearTimeout(nextQuestionTimer);
+      nextQuestionTimer = null;
       timeLeft = 0;
       setKeypadEnabled(false);
       updateStats();
@@ -1031,8 +1111,9 @@
     }
 
     function backToStart() {
-      clearInterval(timer);
-      timer = null;
+      stopTimer();
+      clearTimeout(nextQuestionTimer);
+      nextQuestionTimer = null;
       loadLeaderboard();
       showScreen(startScreen);
     }
