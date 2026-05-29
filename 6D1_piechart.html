@@ -1,0 +1,1032 @@
+<!doctype html>
+<html lang="zh-Hant-HK">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>圓形圖製作器</title>
+  <style>
+    :root {
+      --paper: #fbfaf6;
+      --panel: #ffffff;
+      --ink: #17212b;
+      --muted: #667085;
+      --rule: #d8d2c7;
+      --blue: #156082;
+      --orange: #e97132;
+      --green: #196b24;
+      --cyan: #0f9ed5;
+      --magenta: #a02b93;
+      --olive: #4ea72e;
+      --rust: #994010;
+      --soft: #fff4df;
+      --shadow: 0 10px 30px rgba(23, 33, 43, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: "Microsoft JhengHei", "Microsoft JhengHei UI", "Noto Sans TC", Arial, sans-serif;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    header {
+      border-top: 8px solid var(--blue);
+      border-bottom: 1px solid var(--rule);
+      padding: 12px clamp(16px, 4vw, 48px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      background: rgba(251, 250, 246, 0.96);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 30px;
+      letter-spacing: 0;
+      line-height: 1.15;
+    }
+
+    .top-note {
+      color: var(--muted);
+      font-size: 17px;
+      margin-top: 4px;
+    }
+
+    .layout {
+      width: min(1480px, 100%);
+      margin: 0 auto;
+      padding: 12px clamp(14px, 3vw, 34px) 20px;
+      display: grid;
+      grid-template-columns: minmax(520px, 0.95fr) minmax(560px, 1.05fr);
+      gap: 22px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--rule);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .controls {
+      padding: 20px;
+    }
+
+    .chart-panel {
+      padding: 16px;
+      position: sticky;
+      top: 12px;
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 14px;
+      align-items: end;
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: grid;
+      gap: 7px;
+      font-weight: 700;
+      color: var(--ink);
+      font-size: 17px;
+    }
+
+    input,
+    select {
+      min-height: 46px;
+      border: 1px solid #bfc7d1;
+      border-radius: 6px;
+      padding: 8px 11px;
+      background: #fff;
+      color: var(--ink);
+      outline: none;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(21, 96, 130, 0.16);
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 14px 0 18px;
+    }
+
+    button {
+      border: 1px solid transparent;
+      border-radius: 6px;
+      min-height: 42px;
+      padding: 8px 14px;
+      cursor: pointer;
+      color: var(--ink);
+      background: #f3efe7;
+      font-weight: 800;
+    }
+
+    button.primary {
+      background: var(--blue);
+      color: #fff;
+    }
+
+    button.copy-image {
+      background: var(--green);
+      color: #fff;
+    }
+
+    button.ghost {
+      background: #fff;
+      border-color: var(--rule);
+    }
+
+    button.danger {
+      background: #fff1ed;
+      color: #8a2509;
+      border-color: #efc1b3;
+    }
+
+    button.icon {
+      width: 42px;
+      min-width: 42px;
+      padding: 0;
+      display: inline-grid;
+      place-items: center;
+      font-size: 24px;
+      line-height: 1;
+    }
+
+    button:hover {
+      filter: brightness(0.97);
+    }
+
+    .data-table,
+    .result-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    th {
+      text-align: left;
+      color: var(--muted);
+      font-size: 15px;
+      border-bottom: 1px solid var(--rule);
+      padding: 10px 7px;
+    }
+
+    td {
+      padding: 9px 7px;
+      border-bottom: 1px solid #ece7df;
+      vertical-align: middle;
+      font-size: 18px;
+    }
+
+    .data-table th:nth-child(1),
+    .data-table td:nth-child(1) {
+      width: 43%;
+    }
+
+    .data-table th:nth-child(2),
+    .data-table td:nth-child(2) {
+      width: 26%;
+    }
+
+    .data-table th:nth-child(3),
+    .data-table td:nth-child(3) {
+      width: 18%;
+    }
+
+    .data-table th:nth-child(4),
+    .data-table td:nth-child(4) {
+      width: 13%;
+      text-align: center;
+    }
+
+    .swatch {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 2px solid #000;
+      display: inline-block;
+      vertical-align: middle;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin: 18px 0;
+    }
+
+    .metric {
+      background: #f3efe7;
+      border: 1px solid var(--rule);
+      border-radius: 8px;
+      padding: 14px;
+      min-height: 86px;
+    }
+
+    .metric b {
+      display: block;
+      font-size: 28px;
+      line-height: 1.1;
+      margin-top: 5px;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .chart-title {
+      font-size: 26px;
+      font-weight: 900;
+      line-height: 1.18;
+      margin: 0 0 6px;
+    }
+
+    .chart-subtitle {
+      margin: 0 0 8px;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .chart-box {
+      width: 80%;
+      max-width: 455px;
+      margin: 0 auto;
+      aspect-ratio: 1 / 1;
+      min-height: 0;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--rule);
+      border-radius: 8px;
+      background: #fffdf8;
+      overflow: hidden;
+    }
+
+    .chart-panel .button-row {
+      justify-content: center;
+      margin: 12px 0 8px;
+    }
+
+    .copy-status {
+      margin: 12px 0 0;
+      padding: 12px 14px;
+      border-radius: 8px;
+      background: #ecfdf3;
+      border: 1px solid #9bd7ad;
+      color: #14532d;
+      font-size: 17px;
+      font-weight: 800;
+      line-height: 1.35;
+    }
+
+    .copy-status.warn {
+      background: #fff7ed;
+      border-color: #fdba74;
+      color: #9a3412;
+    }
+
+    svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .empty-state {
+      font-size: 26px;
+      color: var(--muted);
+      font-weight: 900;
+      text-align: center;
+      padding: 24px;
+    }
+
+    .result-table {
+      margin-top: 16px;
+    }
+
+    .result-table td:nth-child(3),
+    .result-table td:nth-child(4),
+    .result-table th:nth-child(3),
+    .result-table th:nth-child(4) {
+      text-align: right;
+    }
+
+    .color-key {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .color-key span:last-child {
+      overflow-wrap: anywhere;
+    }
+
+    details {
+      margin-top: 18px;
+      border: 1px solid var(--rule);
+      border-radius: 8px;
+      background: #fff;
+      padding: 12px 14px;
+    }
+
+    summary {
+      cursor: pointer;
+      font-weight: 900;
+      color: var(--blue);
+      font-size: 18px;
+    }
+
+    details p,
+    details li {
+      color: var(--ink);
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    code {
+      background: #f2f4f7;
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.95em;
+    }
+
+    @media (max-width: 1120px) {
+      header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .chart-panel {
+        position: static;
+      }
+    }
+
+    @media (max-width: 680px) {
+      h1 {
+        font-size: 26px;
+      }
+
+      .layout {
+        padding-left: 10px;
+        padding-right: 10px;
+      }
+
+      .field-row,
+      .summary {
+        grid-template-columns: 1fr;
+      }
+
+      .chart-box {
+        width: 100%;
+        max-width: none;
+      }
+
+      th,
+      td {
+        font-size: 15px;
+        padding-left: 4px;
+        padding-right: 4px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div>
+        <h1>圓形圖製作器</h1>
+        <div class="top-note">輸入數據後，即時計出佔比、角度和圓形圖。</div>
+      </div>
+      <div class="button-row" aria-label="範例">
+        <button class="ghost" data-preset="fruit">水果喜好</button>
+        <button class="ghost" data-preset="transport">上學交通</button>
+        <button class="ghost" data-preset="hk">香港例子</button>
+        <button class="ghost" data-preset="blank">空白模板</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="panel controls" aria-label="輸入數據">
+        <div class="field-row">
+          <label>
+            圖表標題
+            <input id="chartTitleInput" value="同學最喜歡的水果" maxlength="40">
+          </label>
+          <button class="primary" id="addRowBtn" title="加入項目">＋ 加入項目</button>
+        </div>
+
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>項目名</th>
+              <th>數量</th>
+              <th>顏色</th>
+              <th>刪除</th>
+            </tr>
+          </thead>
+          <tbody id="dataBody"></tbody>
+        </table>
+
+        <div class="button-row">
+          <button class="ghost" id="sortBtn">由大至細</button>
+          <button class="ghost" id="sampleRowBtn">加入「其他」</button>
+          <button class="danger" id="clearBtn">清空</button>
+        </div>
+
+        <div class="summary" aria-live="polite">
+          <div class="metric">
+            <span>總數</span>
+            <b id="totalCount">0</b>
+          </div>
+          <div class="metric">
+            <span>項目數</span>
+            <b id="itemCount">0</b>
+          </div>
+          <div class="metric">
+            <span>檢查</span>
+            <b id="checkTotal">0%</b>
+          </div>
+        </div>
+
+        <table class="result-table">
+          <thead>
+            <tr>
+              <th>項目</th>
+              <th>數量</th>
+              <th>佔比</th>
+              <th>角度</th>
+            </tr>
+          </thead>
+          <tbody id="resultBody"></tbody>
+        </table>
+
+        <details>
+          <summary>老師備註：AI／網上資料功能</summary>
+          <p>純 HTML 不適合直接放 API key，因為學生打開檔案就可能見到密鑰。較穩陣做法是：HTML 送出題目，自己的伺服器負責上網搜尋和整理成 JSON，再回傳項目與數字。</p>
+          <p>OpenAI API 一般按用量收費；如要網上搜尋，Responses API 可用 <code>web_search</code> 工具。課堂上想零成本，建議先用政府公開數據或老師預設範例。</p>
+        </details>
+      </section>
+
+      <section class="panel chart-panel" aria-label="圓形圖">
+        <p class="chart-title" id="chartTitle">同學最喜歡的水果</p>
+        <p class="chart-subtitle" id="chartSubtitle">每個扇形入面會顯示項目名和百分數。</p>
+        <div class="chart-box" id="chartBox">
+          <svg id="pieSvg" viewBox="0 0 640 640" role="img" aria-label="圓形圖"></svg>
+        </div>
+        <div class="button-row">
+          <button class="primary" id="downloadBtn">下載圖像</button>
+          <button class="copy-image" id="copyImageBtn">複製圖片到剪貼簿</button>
+          <button class="ghost" id="copySummaryBtn">複製數據</button>
+        </div>
+        <div class="copy-status" id="copyStatus" role="status" aria-live="polite" hidden></div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const palette = [
+      "#156082",
+      "#e97132",
+      "#196b24",
+      "#0f9ed5",
+      "#a02b93",
+      "#4ea72e",
+      "#994010",
+      "#c00000",
+      "#7f6000",
+      "#305496"
+    ];
+
+    const presets = {
+      fruit: {
+        title: "同學最喜歡的水果",
+        rows: [
+          ["蘋果", 8],
+          ["橙", 6],
+          ["香蕉", 10],
+          ["提子", 4],
+          ["其他", 2]
+        ]
+      },
+      transport: {
+        title: "同學上學的交通方式",
+        rows: [
+          ["步行", 9],
+          ["巴士", 12],
+          ["港鐵", 7],
+          ["校車", 5],
+          ["其他", 3]
+        ]
+      },
+      hk: {
+        title: "2021年香港人口性別比例",
+        rows: [
+          ["男", 45.6],
+          ["女", 54.4]
+        ]
+      },
+      blank: {
+        title: "我的圓形圖",
+        rows: [
+          ["", ""],
+          ["", ""],
+          ["", ""],
+          ["", ""]
+        ]
+      }
+    };
+
+    let rows = presets.fruit.rows.map((row, index) => ({
+      label: row[0],
+      value: row[1],
+      color: palette[index % palette.length]
+    }));
+
+    const dataBody = document.getElementById("dataBody");
+    const resultBody = document.getElementById("resultBody");
+    const pieSvg = document.getElementById("pieSvg");
+    const titleInput = document.getElementById("chartTitleInput");
+    const chartTitle = document.getElementById("chartTitle");
+    const chartSubtitle = document.getElementById("chartSubtitle");
+    const totalCount = document.getElementById("totalCount");
+    const itemCount = document.getElementById("itemCount");
+    const checkTotal = document.getElementById("checkTotal");
+    const copyStatus = document.getElementById("copyStatus");
+    let copyStatusTimer = 0;
+    let shareImageBlob = null;
+    let shareImageTimer = 0;
+    let shareImageJob = 0;
+
+    function numberText(value, digits = 1) {
+      const rounded = Number(value.toFixed(digits));
+      return String(rounded);
+    }
+
+    function safeNumber(value) {
+      const number = Number(value);
+      return Number.isFinite(number) && number > 0 ? number : 0;
+    }
+
+    function contrastColor(hex) {
+      const clean = hex.replace("#", "");
+      const r = parseInt(clean.slice(0, 2), 16);
+      const g = parseInt(clean.slice(2, 4), 16);
+      const b = parseInt(clean.slice(4, 6), 16);
+      const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      return luminance < 125 ? "#ffffff" : "#111111";
+    }
+
+    function polar(cx, cy, radius, angleDeg) {
+      const angle = (angleDeg - 90) * Math.PI / 180;
+      return {
+        x: cx + radius * Math.cos(angle),
+        y: cy + radius * Math.sin(angle)
+      };
+    }
+
+    function sectorPath(cx, cy, radius, startDeg, endDeg) {
+      const start = polar(cx, cy, radius, startDeg);
+      const end = polar(cx, cy, radius, endDeg);
+      const largeArc = endDeg - startDeg > 180 ? 1 : 0;
+      return `M ${cx} ${cy} L ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArc} 1 ${end.x} ${end.y} Z`;
+    }
+
+    function arcPath(cx, cy, radius, startDeg, endDeg) {
+      const start = polar(cx, cy, radius, startDeg);
+      const end = polar(cx, cy, radius, endDeg);
+      const largeArc = endDeg - startDeg > 180 ? 1 : 0;
+      return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArc} 1 ${end.x} ${end.y}`;
+    }
+
+    function svgEl(name, attributes = {}) {
+      const element = document.createElementNS("http://www.w3.org/2000/svg", name);
+      Object.entries(attributes).forEach(([key, value]) => element.setAttribute(key, value));
+      return element;
+    }
+
+    function labelSize(percent) {
+      if (percent >= 35) return 30;
+      if (percent >= 20) return 27;
+      if (percent >= 12) return 23;
+      if (percent >= 8) return 19;
+      return 15;
+    }
+
+    function currentData() {
+      const total = rows.reduce((sum, row) => sum + safeNumber(row.value), 0);
+      return rows
+        .map((row) => {
+          const value = safeNumber(row.value);
+          const percent = total > 0 ? value / total * 100 : 0;
+          return {
+            ...row,
+            value,
+            percent,
+            angle: percent * 3.6
+          };
+        })
+        .filter((row) => row.label.trim() && row.value > 0);
+    }
+
+    function renderInputs() {
+      dataBody.innerHTML = "";
+      rows.forEach((row, index) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><input aria-label="項目名" value="${escapeHtml(row.label)}" maxlength="18"></td>
+          <td><input aria-label="數量" type="number" min="0" step="0.1" value="${row.value}"></td>
+          <td><span class="swatch" style="background:${row.color}"></span></td>
+          <td><button class="icon danger" title="刪除項目" aria-label="刪除項目">×</button></td>
+        `;
+        const [labelInput, valueInput] = tr.querySelectorAll("input");
+        labelInput.addEventListener("input", (event) => {
+          rows[index].label = event.target.value;
+          render();
+        });
+        valueInput.addEventListener("input", (event) => {
+          rows[index].value = event.target.value;
+          render();
+        });
+        tr.querySelector("button").addEventListener("click", () => {
+          rows.splice(index, 1);
+          if (rows.length === 0) addRow();
+          renderAll();
+        });
+        dataBody.appendChild(tr);
+      });
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    function renderResults(data, total) {
+      resultBody.innerHTML = "";
+      data.forEach((row) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><span class="color-key"><span class="swatch" style="background:${row.color}"></span><span>${escapeHtml(row.label)}</span></span></td>
+          <td>${numberText(row.value)}</td>
+          <td><strong>${numberText(row.percent)}%</strong></td>
+          <td><strong>${numberText(row.angle)}°</strong></td>
+        `;
+        resultBody.appendChild(tr);
+      });
+      totalCount.textContent = numberText(total);
+      itemCount.textContent = String(data.length);
+      const percentTotal = data.reduce((sum, row) => sum + row.percent, 0);
+      checkTotal.textContent = total > 0 ? `${numberText(percentTotal)}%` : "0%";
+    }
+
+    function renderChart(data, total) {
+      pieSvg.innerHTML = "";
+      chartTitle.textContent = titleInput.value.trim() || "我的圓形圖";
+
+      if (total <= 0 || data.length === 0) {
+        const text = svgEl("text", {
+          x: 320,
+          y: 320,
+          "text-anchor": "middle",
+          "dominant-baseline": "middle",
+          "font-size": 30,
+          "font-weight": 900,
+          fill: "#667085"
+        });
+        text.textContent = "請輸入數據";
+        pieSvg.appendChild(text);
+        chartSubtitle.textContent = "總數要大過0，先可以畫圓形圖。";
+        return;
+      }
+
+      chartSubtitle.textContent = "黑線分隔扇形；外面顯示項目和百分數，中間顯示角度。";
+      let start = 0;
+      const cx = 320;
+      const cy = 320;
+      const radius = 260;
+      data.forEach((row) => {
+        const end = start + row.angle;
+        const path = svgEl("path", {
+          d: sectorPath(cx, cy, radius, start, end),
+          fill: row.color,
+          stroke: "#000000",
+          "stroke-width": 4,
+          "stroke-linejoin": "round"
+        });
+        pieSvg.appendChild(path);
+
+        const mid = start + row.angle / 2;
+        const labelRadius = row.percent < 8 ? 185 : 150;
+        const point = polar(cx, cy, labelRadius, mid);
+        const color = contrastColor(row.color);
+        const size = labelSize(row.percent);
+
+        const label = svgEl("text", {
+          x: point.x,
+          y: point.y - size * 0.55,
+          "text-anchor": "middle",
+          "dominant-baseline": "middle",
+          "font-size": size,
+          "font-weight": 900,
+          fill: color
+        });
+        label.textContent = row.label.length > 7 ? `${row.label.slice(0, 7)}…` : row.label;
+        pieSvg.appendChild(label);
+
+        const pct = svgEl("text", {
+          x: point.x,
+          y: point.y + size * 0.72,
+          "text-anchor": "middle",
+          "dominant-baseline": "middle",
+          "font-size": size + 6,
+          "font-weight": 900,
+          fill: color
+        });
+        pct.textContent = `${numberText(row.percent)}%`;
+        pieSvg.appendChild(pct);
+
+        if (row.angle >= 12) {
+          const angleArc = svgEl("path", {
+            d: arcPath(cx, cy, 78, start + 2, end - 2),
+            fill: "none",
+            stroke: "#000000",
+            "stroke-width": 2.4,
+            "stroke-linecap": "round",
+            opacity: 0.68
+          });
+          pieSvg.appendChild(angleArc);
+
+          const anglePoint = polar(cx, cy, row.percent < 10 ? 116 : 86, mid);
+          const angleText = svgEl("text", {
+            x: anglePoint.x,
+            y: anglePoint.y,
+            "text-anchor": "middle",
+            "dominant-baseline": "middle",
+            "font-size": row.percent < 10 ? 20 : 24,
+            "font-weight": 900,
+            fill: color
+          });
+          angleText.textContent = `${Math.round(row.angle)}°`;
+          pieSvg.appendChild(angleText);
+        }
+        start = end;
+      });
+    }
+
+    function render() {
+      const total = rows.reduce((sum, row) => sum + safeNumber(row.value), 0);
+      const data = currentData();
+      renderResults(data, total);
+      renderChart(data, total);
+      queueShareImageBlob();
+    }
+
+    function renderAll() {
+      renderInputs();
+      render();
+    }
+
+    function addRow(label = "新項目", value = 1) {
+      rows.push({
+        label,
+        value,
+        color: palette[rows.length % palette.length]
+      });
+    }
+
+    function loadPreset(name) {
+      const preset = presets[name];
+      titleInput.value = preset.title;
+      rows = preset.rows.map((row, index) => ({
+        label: row[0],
+        value: row[1],
+        color: palette[index % palette.length]
+      }));
+      renderAll();
+    }
+
+    function showCopyStatus(message, type = "ok") {
+      clearTimeout(copyStatusTimer);
+      copyStatus.textContent = message;
+      copyStatus.className = type === "warn" ? "copy-status warn" : "copy-status";
+      copyStatus.hidden = false;
+      copyStatusTimer = setTimeout(() => {
+        copyStatus.hidden = true;
+      }, 5200);
+    }
+
+    function canvasTextLines(ctx, text, x, y, maxWidth, lineHeight, maxLines = 2) {
+      const words = String(text || "").split("");
+      const lines = [];
+      let line = "";
+      words.forEach((char) => {
+        const test = line + char;
+        if (ctx.measureText(test).width > maxWidth && line) {
+          lines.push(line);
+          line = char;
+        } else {
+          line = test;
+        }
+      });
+      if (line) lines.push(line);
+      lines.slice(0, maxLines).forEach((lineText, index) => {
+        const suffix = index === maxLines - 1 && lines.length > maxLines ? "…" : "";
+        ctx.fillText(lineText + suffix, x, y + index * lineHeight);
+      });
+      return Math.min(lines.length, maxLines) * lineHeight;
+    }
+
+    function svgImageUrl() {
+      const cloned = pieSvg.cloneNode(true);
+      cloned.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+      cloned.setAttribute("width", "1280");
+      cloned.setAttribute("height", "1280");
+      const svgText = new XMLSerializer().serializeToString(cloned);
+      const blob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
+      return URL.createObjectURL(blob);
+    }
+
+    function makeShareImageBlob() {
+      return new Promise((resolve, reject) => {
+        const url = svgImageUrl();
+        const image = new Image();
+        image.onload = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = 1280;
+          canvas.height = 1500;
+          const ctx = canvas.getContext("2d");
+          ctx.fillStyle = "#fffdf8";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          ctx.fillStyle = "#17212b";
+          ctx.font = '900 58px "Microsoft JhengHei", "Noto Sans TC", Arial, sans-serif';
+          let y = 84 + canvasTextLines(ctx, chartTitle.textContent, 84, 84, 1112, 68, 2);
+
+          ctx.fillStyle = "#667085";
+          ctx.font = '700 31px "Microsoft JhengHei", "Noto Sans TC", Arial, sans-serif';
+          y += canvasTextLines(ctx, chartSubtitle.textContent, 84, y + 8, 1112, 42, 2) + 24;
+
+          ctx.strokeStyle = "#d8d2c7";
+          ctx.lineWidth = 4;
+          ctx.strokeRect(84, y, 1112, 1112);
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(86, y + 2, 1108, 1108);
+          ctx.drawImage(image, 116, y + 32, 1050, 1050);
+
+          URL.revokeObjectURL(url);
+          canvas.toBlob((blob) => {
+            if (blob) {
+              resolve(blob);
+            } else {
+              reject(new Error("未能建立圖片"));
+            }
+          }, "image/png");
+        };
+        image.onerror = () => {
+          URL.revokeObjectURL(url);
+          reject(new Error("未能讀取圓形圖"));
+        };
+        image.src = url;
+      });
+    }
+
+    function queueShareImageBlob() {
+      clearTimeout(shareImageTimer);
+      shareImageBlob = null;
+      const job = ++shareImageJob;
+      shareImageTimer = setTimeout(async () => {
+        try {
+          const blob = await makeShareImageBlob();
+          if (job === shareImageJob) {
+            shareImageBlob = blob;
+          }
+        } catch {
+          if (job === shareImageJob) {
+            shareImageBlob = null;
+          }
+        }
+      }, 160);
+    }
+
+    function downloadChart() {
+      const cloned = pieSvg.cloneNode(true);
+      cloned.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+      const svgText = new XMLSerializer().serializeToString(cloned);
+      const blob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const image = new Image();
+      image.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = 1280;
+        canvas.height = 1280;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#fffdf8";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+        const link = document.createElement("a");
+        link.download = `${chartTitle.textContent || "pie-chart"}.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+      };
+      image.src = url;
+    }
+
+    async function copyChartImage() {
+      try {
+        if (!navigator.clipboard || !window.ClipboardItem) {
+          throw new Error("瀏覽器不支援圖片剪貼簿");
+        }
+        const blob = shareImageBlob || await makeShareImageBlob();
+        await navigator.clipboard.write([
+          new ClipboardItem({ "image/png": blob })
+        ]);
+        showCopyStatus("圖片已經加入了剪貼簿，可以貼到 Teams Chat 交功課。");
+      } catch (error) {
+        console.warn(error);
+        showCopyStatus("這部電腦暫時未能直接複製圖片。可以先按「下載圖像」，再把圖片上載到 Teams。", "warn");
+      }
+    }
+
+    async function copySummary() {
+      const data = currentData();
+      const text = data
+        .map((row) => `${row.label}\t${numberText(row.value)}\t${numberText(row.percent)}%\t${numberText(row.angle)}°`)
+        .join("\n");
+      try {
+        await navigator.clipboard.writeText(`項目\t數量\t佔比\t角度\n${text}`);
+        chartSubtitle.textContent = "已複製數據。";
+      } catch {
+        chartSubtitle.textContent = "瀏覽器未能複製，可直接參考左邊表格。";
+      }
+    }
+
+    document.getElementById("addRowBtn").addEventListener("click", () => {
+      addRow();
+      renderAll();
+    });
+
+    document.getElementById("sampleRowBtn").addEventListener("click", () => {
+      addRow("其他", 1);
+      renderAll();
+    });
+
+    document.getElementById("clearBtn").addEventListener("click", () => {
+      rows = [{ label: "項目1", value: 1, color: palette[0] }];
+      renderAll();
+    });
+
+    document.getElementById("sortBtn").addEventListener("click", () => {
+      rows.sort((a, b) => safeNumber(b.value) - safeNumber(a.value));
+      renderAll();
+    });
+
+    document.getElementById("downloadBtn").addEventListener("click", downloadChart);
+    document.getElementById("copyImageBtn").addEventListener("click", copyChartImage);
+    document.getElementById("copySummaryBtn").addEventListener("click", copySummary);
+    titleInput.addEventListener("input", render);
+
+    document.querySelectorAll("[data-preset]").forEach((button) => {
+      button.addEventListener("click", () => loadPreset(button.dataset.preset));
+    });
+
+    renderAll();
+  </script>
+</body>
+</html>
