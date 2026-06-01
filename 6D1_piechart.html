@@ -276,9 +276,36 @@
       font-size: 17px;
     }
 
+    .display-mode {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 10px;
+    }
+
+    .display-mode span {
+      color: var(--muted);
+      font-weight: 800;
+      font-size: 15px;
+    }
+
+    .mode-btn {
+      min-height: 34px;
+      padding: 6px 12px;
+      background: #ffffff;
+      border-color: var(--rule);
+    }
+
+    .mode-btn[aria-pressed="true"] {
+      background: var(--blue);
+      color: #ffffff;
+      border-color: var(--blue);
+    }
+
     .chart-box {
-      width: 80%;
-      max-width: 455px;
+      width: 72%;
+      max-width: 390px;
       margin: 0 auto;
       aspect-ratio: 1 / 1;
       min-height: 0;
@@ -503,6 +530,12 @@
       <section class="panel chart-panel" aria-label="圓形圖">
         <p class="chart-title" id="chartTitle">同學最喜歡的水果</p>
         <p class="chart-subtitle" id="chartSubtitle">每個扇形入面會顯示項目名和百分數。</p>
+        <div class="display-mode" role="group" aria-label="圖內顯示">
+          <span>圖內顯示</span>
+          <button class="mode-btn" type="button" data-label-mode="both" aria-pressed="true">兩樣</button>
+          <button class="mode-btn" type="button" data-label-mode="percent" aria-pressed="false">百分數</button>
+          <button class="mode-btn" type="button" data-label-mode="angle" aria-pressed="false">角度</button>
+        </div>
         <div class="chart-box" id="chartBox">
           <svg id="pieSvg" viewBox="0 0 640 640" role="img" aria-label="圓形圖"></svg>
         </div>
@@ -585,6 +618,8 @@
     const itemCount = document.getElementById("itemCount");
     const checkTotal = document.getElementById("checkTotal");
     const copyStatus = document.getElementById("copyStatus");
+    const labelModeButtons = document.querySelectorAll("[data-label-mode]");
+    let labelMode = "both";
     let copyStatusTimer = 0;
     let shareImageBlob = null;
     let shareImageTimer = 0;
@@ -715,9 +750,22 @@
       checkTotal.textContent = total > 0 ? `${numberText(percentTotal)}%` : "0%";
     }
 
+    function labelModeSubtitle() {
+      if (labelMode === "percent") return "黑線分隔扇形；圖內顯示項目名和百分數。";
+      if (labelMode === "angle") return "黑線分隔扇形；圖內顯示項目名和角度。";
+      return "黑線分隔扇形；圖內顯示項目名、百分數和角度。";
+    }
+
+    function updateLabelModeButtons() {
+      labelModeButtons.forEach((button) => {
+        button.setAttribute("aria-pressed", button.dataset.labelMode === labelMode ? "true" : "false");
+      });
+    }
+
     function renderChart(data, total) {
       pieSvg.innerHTML = "";
       chartTitle.textContent = titleInput.value.trim() || "我的圓形圖";
+      updateLabelModeButtons();
 
       if (total <= 0 || data.length === 0) {
         const text = svgEl("text", {
@@ -735,7 +783,7 @@
         return;
       }
 
-      chartSubtitle.textContent = "黑線分隔扇形；外面顯示項目和百分數，中間顯示角度。";
+      chartSubtitle.textContent = labelModeSubtitle();
       let start = 0;
       const cx = 320;
       const cy = 320;
@@ -769,19 +817,21 @@
         label.textContent = row.label.length > 7 ? `${row.label.slice(0, 7)}…` : row.label;
         pieSvg.appendChild(label);
 
-        const pct = svgEl("text", {
-          x: point.x,
-          y: point.y + size * 0.72,
-          "text-anchor": "middle",
-          "dominant-baseline": "middle",
-          "font-size": size + 6,
-          "font-weight": 900,
-          fill: color
-        });
-        pct.textContent = `${numberText(row.percent)}%`;
-        pieSvg.appendChild(pct);
+        if (labelMode !== "angle") {
+          const pct = svgEl("text", {
+            x: point.x,
+            y: point.y + size * 0.72,
+            "text-anchor": "middle",
+            "dominant-baseline": "middle",
+            "font-size": size + 6,
+            "font-weight": 900,
+            fill: color
+          });
+          pct.textContent = `${numberText(row.percent)}%`;
+          pieSvg.appendChild(pct);
+        }
 
-        if (row.angle >= 12) {
+        if (labelMode !== "percent" && row.angle >= 12) {
           const angleArc = svgEl("path", {
             d: arcPath(cx, cy, 78, start + 2, end - 2),
             fill: "none",
@@ -1021,6 +1071,12 @@
     document.getElementById("copyImageBtn").addEventListener("click", copyChartImage);
     document.getElementById("copySummaryBtn").addEventListener("click", copySummary);
     titleInput.addEventListener("input", render);
+    labelModeButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        labelMode = button.dataset.labelMode;
+        render();
+      });
+    });
 
     document.querySelectorAll("[data-preset]").forEach((button) => {
       button.addEventListener("click", () => loadPreset(button.dataset.preset));
