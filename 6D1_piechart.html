@@ -303,6 +303,12 @@
       border-color: var(--blue);
     }
 
+    #blackWhiteBtn[aria-pressed="true"] {
+      background: #111111;
+      color: #ffffff;
+      border-color: #111111;
+    }
+
     .chart-box {
       width: 72%;
       max-width: 390px;
@@ -530,11 +536,13 @@
       <section class="panel chart-panel" aria-label="圓形圖">
         <p class="chart-title" id="chartTitle">同學最喜歡的水果</p>
         <p class="chart-subtitle" id="chartSubtitle">每個扇形入面會顯示項目名和百分數。</p>
-        <div class="display-mode" role="group" aria-label="圖內顯示">
+        <div class="display-mode" role="group" aria-label="顯示設定">
           <span>圖內顯示</span>
           <button class="mode-btn" type="button" data-label-mode="both" aria-pressed="true">兩樣</button>
           <button class="mode-btn" type="button" data-label-mode="percent" aria-pressed="false">百分數</button>
           <button class="mode-btn" type="button" data-label-mode="angle" aria-pressed="false">角度</button>
+          <span>顏色</span>
+          <button class="mode-btn" type="button" id="blackWhiteBtn" aria-pressed="false">黑白版</button>
         </div>
         <div class="chart-box" id="chartBox">
           <svg id="pieSvg" viewBox="0 0 640 640" role="img" aria-label="圓形圖"></svg>
@@ -619,7 +627,9 @@
     const checkTotal = document.getElementById("checkTotal");
     const copyStatus = document.getElementById("copyStatus");
     const labelModeButtons = document.querySelectorAll("[data-label-mode]");
+    const blackWhiteBtn = document.getElementById("blackWhiteBtn");
     let labelMode = "both";
+    let isBlackWhite = false;
     let copyStatusTimer = 0;
     let shareImageBlob = null;
     let shareImageTimer = 0;
@@ -642,6 +652,11 @@
       const b = parseInt(clean.slice(4, 6), 16);
       const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
       return luminance < 125 ? "#ffffff" : "#111111";
+    }
+
+    function chartFill(row, index) {
+      if (!isBlackWhite) return row.color;
+      return index % 2 === 0 ? "#ffffff" : "#000000";
     }
 
     function polar(cx, cy, radius, angleDeg) {
@@ -751,21 +766,23 @@
     }
 
     function labelModeSubtitle() {
-      if (labelMode === "percent") return "黑線分隔扇形；圖內顯示項目名和百分數。";
-      if (labelMode === "angle") return "黑線分隔扇形；圖內顯示項目名和角度。";
-      return "黑線分隔扇形；圖內顯示項目名、百分數和角度。";
+      let text = "黑線分隔扇形；圖內顯示項目名、百分數和角度。";
+      if (labelMode === "percent") text = "黑線分隔扇形；圖內顯示項目名和百分數。";
+      if (labelMode === "angle") text = "黑線分隔扇形；圖內顯示項目名和角度。";
+      return isBlackWhite ? `黑白版已開啟；${text}` : text;
     }
 
-    function updateLabelModeButtons() {
+    function updateModeButtons() {
       labelModeButtons.forEach((button) => {
         button.setAttribute("aria-pressed", button.dataset.labelMode === labelMode ? "true" : "false");
       });
+      blackWhiteBtn.setAttribute("aria-pressed", isBlackWhite ? "true" : "false");
     }
 
     function renderChart(data, total) {
       pieSvg.innerHTML = "";
       chartTitle.textContent = titleInput.value.trim() || "我的圓形圖";
-      updateLabelModeButtons();
+      updateModeButtons();
 
       if (total <= 0 || data.length === 0) {
         const text = svgEl("text", {
@@ -788,11 +805,13 @@
       const cx = 320;
       const cy = 320;
       const radius = 260;
-      data.forEach((row) => {
+      data.forEach((row, index) => {
         const end = start + row.angle;
+        const fill = chartFill(row, index);
+        const color = contrastColor(fill);
         const path = svgEl("path", {
           d: sectorPath(cx, cy, radius, start, end),
-          fill: row.color,
+          fill,
           stroke: "#000000",
           "stroke-width": 4,
           "stroke-linejoin": "round"
@@ -802,7 +821,6 @@
         const mid = start + row.angle / 2;
         const labelRadius = row.percent < 8 ? 185 : 150;
         const point = polar(cx, cy, labelRadius, mid);
-        const color = contrastColor(row.color);
         const size = labelSize(row.percent);
 
         const label = svgEl("text", {
@@ -835,7 +853,7 @@
           const angleArc = svgEl("path", {
             d: arcPath(cx, cy, 78, start + 2, end - 2),
             fill: "none",
-            stroke: "#000000",
+            stroke: color,
             "stroke-width": 2.4,
             "stroke-linecap": "round",
             opacity: 0.68
@@ -1076,6 +1094,10 @@
         labelMode = button.dataset.labelMode;
         render();
       });
+    });
+    blackWhiteBtn.addEventListener("click", () => {
+      isBlackWhite = !isBlackWhite;
+      render();
     });
 
     document.querySelectorAll("[data-preset]").forEach((button) => {
