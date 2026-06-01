@@ -656,7 +656,7 @@
 
     function chartFill(row, index) {
       if (!isBlackWhite) return row.color;
-      return index % 2 === 0 ? "#ffffff" : "#000000";
+      return "#ffffff";
     }
 
     function polar(cx, cy, radius, angleDeg) {
@@ -808,7 +808,7 @@
       data.forEach((row, index) => {
         const end = start + row.angle;
         const fill = chartFill(row, index);
-        const color = contrastColor(fill);
+        const color = isBlackWhite ? "#000000" : contrastColor(fill);
         const path = svgEl("path", {
           d: sectorPath(cx, cy, radius, start, end),
           fill,
