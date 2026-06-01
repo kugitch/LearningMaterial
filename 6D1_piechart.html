@@ -681,6 +681,36 @@
       return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArc} 1 ${end.x} ${end.y}`;
     }
 
+    function angleVector(angleDeg) {
+      const angle = (angleDeg - 90) * Math.PI / 180;
+      return {
+        x: Math.cos(angle),
+        y: Math.sin(angle)
+      };
+    }
+
+    function rightAnglePath(cx, cy, startDeg, endDeg, size) {
+      const start = angleVector(startDeg);
+      const end = angleVector(endDeg);
+      const p1 = {
+        x: cx + start.x * size,
+        y: cy + start.y * size
+      };
+      const corner = {
+        x: p1.x + end.x * size,
+        y: p1.y + end.y * size
+      };
+      const p2 = {
+        x: cx + end.x * size,
+        y: cy + end.y * size
+      };
+      return `M ${p1.x} ${p1.y} L ${corner.x} ${corner.y} L ${p2.x} ${p2.y}`;
+    }
+
+    function isRightAngle(angle) {
+      return Math.abs(angle - 90) < 0.05;
+    }
+
     function svgEl(name, attributes = {}) {
       const element = document.createElementNS("http://www.w3.org/2000/svg", name);
       Object.entries(attributes).forEach(([key, value]) => element.setAttribute(key, value));
@@ -850,17 +880,30 @@
         }
 
         if (labelMode !== "percent" && row.angle >= 12) {
-          const angleArc = svgEl("path", {
-            d: arcPath(cx, cy, 78, start + 2, end - 2),
-            fill: "none",
-            stroke: color,
-            "stroke-width": 2.4,
-            "stroke-linecap": "round",
-            opacity: 0.68
-          });
-          pieSvg.appendChild(angleArc);
+          if (isRightAngle(row.angle)) {
+            const rightAngle = svgEl("path", {
+              d: rightAnglePath(cx, cy, start, end, 42),
+              fill: "none",
+              stroke: color,
+              "stroke-width": 2.6,
+              "stroke-linecap": "square",
+              "stroke-linejoin": "miter",
+              opacity: 0.82
+            });
+            pieSvg.appendChild(rightAngle);
+          } else {
+            const angleArc = svgEl("path", {
+              d: arcPath(cx, cy, 54, start + 2, end - 2),
+              fill: "none",
+              stroke: color,
+              "stroke-width": 2.2,
+              "stroke-linecap": "round",
+              opacity: 0.68
+            });
+            pieSvg.appendChild(angleArc);
+          }
 
-          const anglePoint = polar(cx, cy, row.percent < 10 ? 116 : 86, mid);
+          const anglePoint = polar(cx, cy, row.percent < 10 ? 102 : 78, mid);
           const angleText = svgEl("text", {
             x: anglePoint.x,
             y: anglePoint.y,
